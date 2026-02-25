@@ -134,7 +134,7 @@
 .sidebar-link {
   display: block;
   text-decoration: none;
-  color: #f5f9ff;
+  color: #082f6e;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
@@ -179,7 +179,7 @@
 .sidebar-sublink {
   display: block;
   text-decoration: none;
-  color: #f5f9ff;
+  color: #082f6e;
   background: rgba(255, 255, 255, 0.09);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
