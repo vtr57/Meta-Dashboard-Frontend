@@ -25,8 +25,57 @@ export default function ConnectionPage() {
       setErrorMsg('Login Facebook indisponivel: configure VITE_API_BASE_URL. Use o fallback manual abaixo.')
       return
     }
+    const authUrl = `${apiBaseUrl}/api/facebook-auth/start?next=${encodeURIComponent(
+      window.location.origin + '/app/conexao'
+    )}`
+    const popup = window.open(
+      authUrl,
+      'facebook_oauth_login',
+      'width=620,height=760,menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes'
+    )
+
+    if (!popup) {
+      setErrorMsg('Nao foi possivel abrir o popup. Libere popups para este site e tente novamente.')
+      return
+    }
+
     setErrorMsg('')
-    window.location.href = `${apiBaseUrl}/api/facebook-auth/start?next=${encodeURIComponent(window.location.origin + '/app/conexao')}`
+    setFeedback('Conclua o login com Facebook na janela popup.')
+
+    const popupPoll = window.setInterval(() => {
+      if (popup.closed) {
+        window.clearInterval(popupPoll)
+        fetchConnectionStatus()
+        return
+      }
+
+      try {
+        const popupUrl = new URL(popup.location.href)
+        const isConnectionRoute = popupUrl.origin === window.location.origin && popupUrl.pathname === '/app/conexao'
+        if (!isConnectionRoute) {
+          return
+        }
+
+        const fbConnected = popupUrl.searchParams.get('fb_connected')
+        const fbError = popupUrl.searchParams.get('fb_error')
+        if (fbConnected === '1') {
+          setErrorMsg('')
+          setFeedback('Login com Facebook concluido com sucesso.')
+          fetchConnectionStatus()
+          popup.close()
+          window.clearInterval(popupPoll)
+          return
+        }
+        if (fbError) {
+          setFeedback('')
+          setErrorMsg(`Falha no login com Facebook: ${fbError}`)
+          popup.close()
+          window.clearInterval(popupPoll)
+        }
+      } catch {
+        // Ignora erros de leitura enquanto popup estiver em origem diferente.
+      }
+    }, 500)
   }
 
   const fetchConnectionStatus = useCallback(async () => {
