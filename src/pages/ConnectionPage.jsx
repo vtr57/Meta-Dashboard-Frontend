@@ -215,16 +215,15 @@ export default function ConnectionPage() {
 
   return (
     <section className="view-card view-card-meta">
+      <h2>Conexao / Sincronizacao</h2>
+      <p className="view-description">
+        Nesta tela o usuario conecta a conta Meta e inicia a sincronizacao completa.
+      </p>
       <div className="sync-block">
         <button type="button" className="primary-btn" onClick={handleFacebookLogin}>
           Entrar com Facebook
         </button>
       </div>
-
-      <h2>Conexao / Sincronizacao</h2>
-      <p className="view-description">
-        Nesta tela o usuario conecta a conta Meta e inicia a sincronizacao completa.
-      </p>
 
       {connectedViaOAuth ? (
         <p className="hint-ok">
