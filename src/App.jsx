@@ -5,7 +5,7 @@ import { ClientesCadastrarPage, ClientesVisualizarPage } from './pages/ClientesP
 import InstagramDashboardPage from './pages/InstagramDashboardPage'
 import MetaDashboardPage from './pages/MetaDashboardPage'
 import { logUiError } from './pages/pageUtils'
-import api from './lib/api'
+import api, { setCsrfToken } from './lib/api'
 import './App.css'
 
 function LoginPage({ onLogin }) {
@@ -161,6 +161,7 @@ function App() {
   const loadSession = useCallback(async () => {
     try {
       const response = await api.get('/auth/me/')
+      setCsrfToken(response.data?.csrfToken)
       if (response.data?.authenticated) {
         setUser(response.data.user)
       } else {
@@ -180,7 +181,8 @@ function App() {
 
   const onLogin = async (credentials) => {
     try {
-      await api.get('/auth/me/')
+      const csrfResponse = await api.get('/auth/me/')
+      setCsrfToken(csrfResponse.data?.csrfToken)
       await api.post('/auth/login/', credentials)
       await loadSession()
       return { ok: true }

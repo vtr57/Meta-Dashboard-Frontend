@@ -8,6 +8,11 @@ const resolveDefaultApiBaseUrl = () => {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl()).replace(/\/+$/, '')
+let csrfToken = null
+
+export const setCsrfToken = (token) => {
+  csrfToken = token || null
+}
 
 const getCookie = (name) => {
   const cookies = document.cookie ? document.cookie.split('; ') : []
@@ -28,10 +33,10 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const method = (config.method || 'get').toLowerCase()
   if (['post', 'put', 'patch', 'delete'].includes(method)) {
-    const csrfToken = getCookie('csrftoken')
-    if (csrfToken) {
+    const token = csrfToken || getCookie('csrftoken')
+    if (token) {
       config.headers = config.headers || {}
-      config.headers['X-CSRFToken'] = csrfToken
+      config.headers['X-CSRFToken'] = token
     }
   }
   return config
