@@ -5,8 +5,6 @@ import { formatLogTime, logUiError, resolveLogStatus } from './pageUtils'
 const FACEBOOK_OAUTH_MESSAGE_TYPE = 'facebook_oauth_result'
 
 export default function ConnectionPage() {
-  const [idMetaUser, setIdMetaUser] = useState('')
-  const [shortToken, setShortToken] = useState('')
   const [statusInfo, setStatusInfo] = useState({
     connected: false,
     has_valid_long_token: false,
@@ -16,7 +14,6 @@ export default function ConnectionPage() {
   })
   const [logs, setLogs] = useState([])
   const [syncRun, setSyncRun] = useState(null)
-  const [connectLoading, setConnectLoading] = useState(false)
   const [syncLoading, setSyncLoading] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
@@ -24,7 +21,7 @@ export default function ConnectionPage() {
   const handleFacebookLogin = () => {
     const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
     if (!apiBaseUrl) {
-      setErrorMsg('Login Facebook indisponivel: configure VITE_API_BASE_URL. Use o fallback manual abaixo.')
+      setErrorMsg('Login Facebook indisponivel: configure VITE_API_BASE_URL.')
       return
     }
     const authUrl = `${apiBaseUrl}/api/facebook-auth/start?next=${encodeURIComponent(
@@ -56,9 +53,6 @@ export default function ConnectionPage() {
         id_meta_user: data.id_meta_user || null,
         expired_at: data.expired_at || null,
       })
-      if (data.id_meta_user) {
-        setIdMetaUser(data.id_meta_user)
-      }
     } catch (error) {
       logUiError('conexao-sincronizacao', 'meta-connection-status', error)
       setErrorMsg('Nao foi possivel carregar o status da conexao Meta.')
@@ -131,26 +125,6 @@ export default function ConnectionPage() {
     window.addEventListener('message', onOAuthMessage)
     return () => window.removeEventListener('message', onOAuthMessage)
   }, [])
-
-  const handleConnect = async () => {
-    setConnectLoading(true)
-    setErrorMsg('')
-    setFeedback('')
-    try {
-      await api.post('/api/meta/connect', {
-        id_meta_user: idMetaUser,
-        short_token: shortToken,
-      })
-      setFeedback('Conta Meta conectada com sucesso.')
-      setShortToken('')
-      await fetchConnectionStatus()
-    } catch (error) {
-      logUiError('conexao-sincronizacao', 'meta-connect', error)
-      setErrorMsg(error.response?.data?.detail || 'Falha ao conectar conta Meta.')
-    } finally {
-      setConnectLoading(false)
-    }
-  }
 
   const handleSyncStart = async (endpoint, feedbackMessage = 'Sincronizacao iniciada.') => {
     setSyncLoading(true)
@@ -237,7 +211,7 @@ export default function ConnectionPage() {
     }
   }, [syncRun?.id, syncRun?.is_finished, fetchConnectionStatus])
 
-  const connectOptional = statusInfo.has_valid_long_token
+  const connectedViaOAuth = statusInfo.has_valid_long_token
 
   return (
     <section className="view-card view-card-meta">
@@ -245,7 +219,6 @@ export default function ConnectionPage() {
         <button type="button" className="primary-btn" onClick={handleFacebookLogin}>
           Entrar com Facebook
         </button>
-        <p className="hint-neutral">Fallback tecnico: voce pode conectar manualmente via id_meta_user + short_token.</p>
       </div>
 
       <h2>Conexao / Sincronizacao</h2>
@@ -253,50 +226,26 @@ export default function ConnectionPage() {
         Nesta tela o usuario conecta a conta Meta e inicia a sincronizacao completa.
       </p>
 
-      {connectOptional ? (
+      {connectedViaOAuth ? (
         <p className="hint-ok">
-          Long token valido encontrado. Conectar agora e opcional.
+          Conta Meta conectada com token valido.
         </p>
       ) : (
         <p className="hint-warning">
-          Conexao obrigatoria: informe `id_meta_user` e `short_token` para continuar.
+          Conexao obrigatoria: use o botao Entrar com Facebook para continuar.
         </p>
       )}
+
+      {statusInfo.id_meta_user ? (
+        <p className="hint-neutral">Conta Meta conectada: {statusInfo.id_meta_user}</p>
+      ) : null}
 
       {statusInfo.expired_at ? (
         <p className="hint-neutral">Expiracao do token atual: {new Date(statusInfo.expired_at).toLocaleString('pt-BR')}</p>
       ) : null}
 
       <div className="sync-block">
-        <h3>Bloco 1: Conexao</h3>
-        <div className="form-grid">
-          <label htmlFor="meta-id">id_meta_user</label>
-          <input
-            id="meta-id"
-            placeholder="Digite o id_meta_user"
-            value={idMetaUser}
-            onChange={(event) => setIdMetaUser(event.target.value)}
-          />
-          <label htmlFor="short-token">short_token</label>
-          <input
-            id="short-token"
-            placeholder="Digite o short_token"
-            value={shortToken}
-            onChange={(event) => setShortToken(event.target.value)}
-          />
-          <button
-            type="button"
-            className="primary-btn"
-            onClick={handleConnect}
-            disabled={connectLoading || !idMetaUser || !shortToken}
-          >
-            {connectLoading ? 'Conectando...' : 'Conectar'}
-          </button>
-        </div>
-      </div>
-
-      <div className="sync-block">
-        <h3>Bloco 2: Sincronizacao</h3>
+        <h3>Bloco 1: Sincronizacao</h3>
         <div className="sync-actions">
           <button
             type="button"
