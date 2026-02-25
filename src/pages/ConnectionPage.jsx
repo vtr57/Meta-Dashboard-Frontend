@@ -19,6 +19,16 @@ export default function ConnectionPage() {
   const [feedback, setFeedback] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
+  const handleFacebookLogin = () => {
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+    if (!apiBaseUrl) {
+      setErrorMsg('Login Facebook indisponivel: configure VITE_API_BASE_URL. Use o fallback manual abaixo.')
+      return
+    }
+    setErrorMsg('')
+    window.location.href = `${apiBaseUrl}/api/facebook-auth/start?next=${encodeURIComponent(window.location.origin + '/app/conexao')}`
+  }
+
   const fetchConnectionStatus = useCallback(async () => {
     try {
       const response = await api.get('/api/meta/connection-status')
@@ -41,6 +51,21 @@ export default function ConnectionPage() {
 
   useEffect(() => {
     fetchConnectionStatus()
+  }, [fetchConnectionStatus])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const fbConnected = params.get('fb_connected')
+    const fbError = params.get('fb_error')
+
+    if (fbConnected === '1') {
+      setErrorMsg('')
+      setFeedback('Login com Facebook concluido com sucesso.')
+      fetchConnectionStatus()
+    }
+    if (fbError) {
+      setErrorMsg(`Falha no login com Facebook: ${fbError}`)
+    }
   }, [fetchConnectionStatus])
 
   const handleConnect = async () => {
@@ -152,6 +177,13 @@ export default function ConnectionPage() {
 
   return (
     <section className="view-card view-card-meta">
+      <div className="sync-block">
+        <button type="button" className="primary-btn" onClick={handleFacebookLogin}>
+          Entrar com Facebook
+        </button>
+        <p className="hint-neutral">Fallback tecnico: voce pode conectar manualmente via id_meta_user + short_token.</p>
+      </div>
+
       <h2>Conexao / Sincronizacao</h2>
       <p className="view-description">
         Nesta tela o usuario conecta a conta Meta e inicia a sincronizacao completa.
