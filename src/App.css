@@ -38,6 +38,21 @@
   font-size: 0.9rem;
 }
 
+.login-privacy-link {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.login-privacy-link a {
+  color: #0b4ea2;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-privacy-link a:hover {
+  text-decoration: underline;
+}
+
 .login-card label {
   font-size: 0.9rem;
   color: #082f6e;
@@ -208,6 +223,51 @@
   border-radius: 12px;
   padding: 1rem;
   color: #102a4d;
+}
+
+.privacy-page {
+  min-height: 100vh;
+  background: #d2e1fa;
+  display: grid;
+  place-items: start center;
+  padding: 1rem;
+}
+
+.privacy-card {
+  width: min(860px, 100%);
+  background: #ffffff;
+  border: 1px solid #9cb8e2;
+  border-radius: 12px;
+  padding: 1rem;
+  color: #102a4d;
+}
+
+.privacy-card h1 {
+  margin: 0 0 0.8rem;
+  color: #082f6e;
+}
+
+.privacy-card h2 {
+  margin: 1rem 0 0.35rem;
+  color: #082f6e;
+  font-size: 1.05rem;
+}
+
+.privacy-card h3 {
+  margin: 0.85rem 0 0.3rem;
+  color: #143d77;
+  font-size: 0.98rem;
+}
+
+.privacy-card p {
+  margin: 0.4rem 0 0;
+  line-height: 1.5;
+}
+
+.privacy-card ul {
+  margin: 0.45rem 0 0 1.1rem;
+  padding: 0;
+  line-height: 1.5;
 }
 
 .view-card h2 {

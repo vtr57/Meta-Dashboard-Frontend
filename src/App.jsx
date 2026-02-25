@@ -4,6 +4,8 @@ import ConnectionPage from './pages/ConnectionPage'
 import { ClientesCadastrarPage, ClientesVisualizarPage } from './pages/ClientesPage'
 import InstagramDashboardPage from './pages/InstagramDashboardPage'
 import MetaDashboardPage from './pages/MetaDashboardPage'
+import DataDeletionPage from './pages/DataDeletionPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import { logUiError } from './pages/pageUtils'
 import api, { setCsrfToken } from './lib/api'
 import './App.css'
@@ -32,6 +34,11 @@ function LoginPage({ onLogin }) {
       <form className="login-card" onSubmit={handleSubmit}>
         <h1>Entrar</h1>
         <p className="login-subtitle">Use seu usuario e senha do sistema.</p>
+        <p className="login-privacy-link">
+          <a href="/politica-de-privacidade">Politica de Privacidade</a>
+          {' | '}
+          <a href="/exclusao-de-dados">Exclusao de Dados</a>
+        </p>
 
         <label htmlFor="username">Usuario</label>
         <input
@@ -210,6 +217,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/exclusao-de-dados" element={<DataDeletionPage />} />
+        <Route path="/data-deletion" element={<DataDeletionPage />} />
         <Route
           path="/login"
           element={
