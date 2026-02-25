@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '../lib/api'
 import { formatLogTime, logUiError, resolveLogStatus } from './pageUtils'
 
+const FACEBOOK_OAUTH_MESSAGE_TYPE = 'facebook_oauth_result'
+
 export default function ConnectionPage() {
   const [idMetaUser, setIdMetaUser] = useState('')
   const [shortToken, setShortToken] = useState('')
@@ -41,41 +43,6 @@ export default function ConnectionPage() {
 
     setErrorMsg('')
     setFeedback('Conclua o login com Facebook na janela popup.')
-
-    const popupPoll = window.setInterval(() => {
-      if (popup.closed) {
-        window.clearInterval(popupPoll)
-        fetchConnectionStatus()
-        return
-      }
-
-      try {
-        const popupUrl = new URL(popup.location.href)
-        const isConnectionRoute = popupUrl.origin === window.location.origin && popupUrl.pathname === '/app/conexao'
-        if (!isConnectionRoute) {
-          return
-        }
-
-        const fbConnected = popupUrl.searchParams.get('fb_connected')
-        const fbError = popupUrl.searchParams.get('fb_error')
-        if (fbConnected === '1') {
-          setErrorMsg('')
-          setFeedback('Login com Facebook concluido com sucesso.')
-          fetchConnectionStatus()
-          popup.close()
-          window.clearInterval(popupPoll)
-          return
-        }
-        if (fbError) {
-          setFeedback('')
-          setErrorMsg(`Falha no login com Facebook: ${fbError}`)
-          popup.close()
-          window.clearInterval(popupPoll)
-        }
-      } catch {
-        // Ignora erros de leitura enquanto popup estiver em origem diferente.
-      }
-    }, 500)
   }
 
   const fetchConnectionStatus = useCallback(async () => {
@@ -107,6 +74,19 @@ export default function ConnectionPage() {
     const fbConnected = params.get('fb_connected')
     const fbError = params.get('fb_error')
 
+    if (window.opener && (fbConnected === '1' || fbError)) {
+      window.opener.postMessage(
+        {
+          type: FACEBOOK_OAUTH_MESSAGE_TYPE,
+          status: fbConnected === '1' ? 'success' : 'error',
+          error: fbError || null,
+        },
+        window.location.origin
+      )
+      window.close()
+      return
+    }
+
     if (fbConnected === '1') {
       setErrorMsg('')
       setFeedback('Login com Facebook concluido com sucesso.')
@@ -116,6 +96,31 @@ export default function ConnectionPage() {
       setErrorMsg(`Falha no login com Facebook: ${fbError}`)
     }
   }, [fetchConnectionStatus])
+
+  useEffect(() => {
+    const onOAuthMessage = (event) => {
+      if (event.origin !== window.location.origin) {
+        return
+      }
+      const payload = event.data || {}
+      if (payload.type !== FACEBOOK_OAUTH_MESSAGE_TYPE) {
+        return
+      }
+
+      if (payload.status === 'success') {
+        window.location.assign('/app/conexao')
+        return
+      }
+
+      if (payload.status === 'error') {
+        setFeedback('')
+        setErrorMsg(`Falha no login com Facebook: ${payload.error || 'oauth_failed'}`)
+      }
+    }
+
+    window.addEventListener('message', onOAuthMessage)
+    return () => window.removeEventListener('message', onOAuthMessage)
+  }, [])
 
   const handleConnect = async () => {
     setConnectLoading(true)
