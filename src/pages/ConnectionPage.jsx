@@ -29,7 +29,7 @@ export default function ConnectionPage() {
     }
     const authUrl = `${apiBaseUrl}/api/facebook-auth/start?next=${encodeURIComponent(
       window.location.origin + '/app/conexao'
-    )}`
+    )}&popup=1`
     const popup = window.open(
       authUrl,
       'facebook_oauth_login',
@@ -99,7 +99,17 @@ export default function ConnectionPage() {
 
   useEffect(() => {
     const onOAuthMessage = (event) => {
-      if (event.origin !== window.location.origin) {
+      const allowedOrigins = new Set([window.location.origin])
+      const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+      if (apiBaseUrl) {
+        try {
+          allowedOrigins.add(new URL(apiBaseUrl).origin)
+        } catch {
+          // Ignore invalid env URL; keep current-origin only.
+        }
+      }
+
+      if (!allowedOrigins.has(event.origin)) {
         return
       }
       const payload = event.data || {}
