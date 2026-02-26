@@ -28,7 +28,7 @@ function formatSaldoSyncFeedback(saldoSync) {
 
   if (saldoSync.skipped) {
     const detail = String(saldoSync.detail || '').trim()
-    return detail ? `Sincronizacao de saldo nao executada: ${detail}.` : 'Sincronizacao de saldo nao executada.'
+    return detail ? `Sincronizaão de saldo nao executada: ${detail}.` : 'Sincronizaão de saldo nao executada.'
   }
 
   const parts = [`Saldo sincronizado para ${formatNumber(updatedClientes)} cliente(s)`]

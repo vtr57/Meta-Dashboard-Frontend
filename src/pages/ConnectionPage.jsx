@@ -375,7 +375,7 @@ export default function ConnectionPage() {
                 </strong>
               </p>
               <p>
-                <span>Ultima sincronizacao</span>
+                <span>Ultima Sincronização</span>
                 <strong>{lastSyncLabel}</strong>
               </p>
             </div>
@@ -389,7 +389,7 @@ export default function ConnectionPage() {
           <article className="connection-card">
             <div className="connection-card-title">
               <h3>
-                <i className="fa-solid fa-rotate" aria-hidden="true" /> Sincronizacao
+                <i className="fa-solid fa-rotate" aria-hidden="true" /> Sincronização
               </h3>
               <span className={`sync-status-badge ${syncStatusClass}`}>{syncStatusLabel}</span>
             </div>
