@@ -407,6 +407,15 @@ export default function MetaDashboardPage() {
     () => normalizeSeriesToDateRange(series, filters.date_start, filters.date_end),
     [series, filters.date_start, filters.date_end],
   )
+  const resultadosTotais = useMemo(
+    () =>
+      series.reduce((acc, row) => {
+        const raw = row?.results ?? row?.clicks ?? 0
+        const parsed = Number(raw)
+        return acc + (Number.isFinite(parsed) ? parsed : 0)
+      }, 0),
+    [series],
+  )
   const adAccountItems = useMemo(
     () => toSearchableItems(options.ad_accounts, 'id_meta_ad_account'),
     [options.ad_accounts],
@@ -583,6 +592,10 @@ export default function MetaDashboardPage() {
             <article className="kpi-tile">
               <p className="kpi-label">Alcance Total</p>
               <p className="kpi-value">{formatNumber(kpis?.alcance_total)}</p>
+            </article>
+            <article className="kpi-tile">
+              <p className="kpi-label">Resultados Totais</p>
+              <p className="kpi-value">{formatNumber(resultadosTotais)}</p>
             </article>
             <article className="kpi-tile">
               <p className="kpi-label">CTR Médio</p>
