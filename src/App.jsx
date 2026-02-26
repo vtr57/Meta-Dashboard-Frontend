@@ -113,7 +113,7 @@ function AppLayout({ user, onLogout }) {
             className={({ isActive }) => (isActive ? 'sidebar-link active' : 'sidebar-link')}
           >
             <span className="sidebar-link-content">
-              <i className="fa-solid fa-chart-column sidebar-link-icon" aria-hidden="true" />
+              <i className="fa-brands fa-meta sidebar-link-icon" aria-hidden="true" />
               <span>Dashboard Meta</span>
             </span>
           </NavLink>
