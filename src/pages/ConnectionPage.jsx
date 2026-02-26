@@ -425,7 +425,7 @@ export default function ConnectionPage() {
                   <i className="fa-brands fa-instagram" aria-hidden="true" /> Apenas Instagram
                 </button>
                 <button type="button" className="table-action-btn" onClick={handleSyncMeta} disabled={!canStartSync}>
-                  <i className="fa-solid fa-chart-column" aria-hidden="true" /> Apenas Meta Ads
+                  <i className="fa-brands fa-meta" aria-hidden="true" /> Apenas Meta Ads
                 </button>
               </div>
             </div>
