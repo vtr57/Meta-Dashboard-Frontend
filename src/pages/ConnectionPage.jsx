@@ -3,48 +3,6 @@ import api from '../lib/api'
 import { formatLogTime, logUiError, resolveLogStatus } from './pageUtils'
 
 const FACEBOOK_OAUTH_MESSAGE_TYPE = 'facebook_oauth_result'
-const SYNC_RUN_STORAGE_KEY = 'meta_sync_active_run'
-
-function loadPersistedSyncRun() {
-  try {
-    const raw = window.localStorage.getItem(SYNC_RUN_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    const runId = Number(parsed?.id || 0)
-    if (!Number.isInteger(runId) || runId <= 0) return null
-    return {
-      id: runId,
-      status: String(parsed?.status || 'pending'),
-      is_finished: !!parsed?.is_finished,
-    }
-  } catch {
-    return null
-  }
-}
-
-function persistSyncRun(syncRun) {
-  if (!syncRun?.id) return
-  try {
-    window.localStorage.setItem(
-      SYNC_RUN_STORAGE_KEY,
-      JSON.stringify({
-        id: syncRun.id,
-        status: syncRun.status || 'pending',
-        is_finished: !!syncRun.is_finished,
-      }),
-    )
-  } catch {
-    // ignore storage failures
-  }
-}
-
-function clearPersistedSyncRun() {
-  try {
-    window.localStorage.removeItem(SYNC_RUN_STORAGE_KEY)
-  } catch {
-    // ignore storage failures
-  }
-}
 
 export default function ConnectionPage() {
   const [statusInfo, setStatusInfo] = useState({
@@ -104,17 +62,6 @@ export default function ConnectionPage() {
   useEffect(() => {
     fetchConnectionStatus()
   }, [fetchConnectionStatus])
-
-  useEffect(() => {
-    const persistedRun = loadPersistedSyncRun()
-    if (!persistedRun) return
-    if (persistedRun.is_finished) {
-      clearPersistedSyncRun()
-      return
-    }
-    setSyncRun(persistedRun)
-    setFeedback('Sincronizacao em andamento retomada automaticamente.')
-  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -188,13 +135,11 @@ export default function ConnectionPage() {
       const runId = response.data?.sync_run_id
       if (runId) {
         setLogs([])
-        const nextSyncRun = {
+        setSyncRun({
           id: runId,
           status: response.data?.status || 'pending',
           is_finished: false,
-        }
-        setSyncRun(nextSyncRun)
-        persistSyncRun(nextSyncRun)
+        })
         setFeedback(feedbackMessage)
       }
     } catch (error) {
@@ -236,17 +181,11 @@ export default function ConnectionPage() {
         sinceId = payload.next_since_id || sinceId
         const run = payload.sync_run || {}
         const finished = !!run.is_finished
-        const nextSyncRun = {
+        setSyncRun({
           id: syncRun.id,
           status: run.status || syncRun.status,
           is_finished: finished,
-        }
-        setSyncRun(nextSyncRun)
-        if (finished) {
-          clearPersistedSyncRun()
-        } else {
-          persistSyncRun(nextSyncRun)
-        }
+        })
         if (!finished && !canceled) {
           timer = window.setTimeout(poll, 2000)
         } else if (finished) {
