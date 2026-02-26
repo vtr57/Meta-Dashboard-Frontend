@@ -17,15 +17,6 @@ function toLocalDate(value) {
   return parsed
 }
 
-function isRenovacaoEmMenosDeDoisDias(dataRenovacao) {
-  const renovacao = toLocalDate(dataRenovacao)
-  if (!renovacao) return false
-  const now = new Date()
-  const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const diffDays = Math.floor((renovacao.getTime() - hoje.getTime()) / 86400000)
-  return diffDays < 2
-}
-
 function formatSaldoSyncFeedback(saldoSync) {
   if (!saldoSync || typeof saldoSync !== 'object') return ''
 
@@ -48,6 +39,57 @@ function formatSaldoSyncFeedback(saldoSync) {
     parts.push(`${formatNumber(totalIssues)} ocorrencia(s) na consulta`)
   }
   return `${parts.join(' | ')}.`
+}
+
+function toNumeric(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(toNumeric(value))
+}
+
+function getSaldoCoverageDays(row) {
+  const saldo = toNumeric(row?.saldo_atual)
+  const gasto = toNumeric(row?.gasto_diario)
+  if (gasto <= 0) return Number.POSITIVE_INFINITY
+  return saldo / gasto
+}
+
+function getFinancialStatus(row) {
+  const coverage = getSaldoCoverageDays(row)
+  if (coverage <= 3) {
+    return { value: 'critico', label: 'Critico', className: 'danger' }
+  }
+  if (coverage <= 7) {
+    return { value: 'atencao', label: 'Atencao', className: 'warning' }
+  }
+  return { value: 'ok', label: 'OK', className: 'ok' }
+}
+
+function getRenovacaoStatus(dataRenovacao) {
+  const renovacao = toLocalDate(dataRenovacao)
+  if (!renovacao) {
+    return { className: 'neutral', caption: 'Data invalida' }
+  }
+  const now = new Date()
+  const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diffDays = Math.floor((renovacao.getTime() - hoje.getTime()) / 86400000)
+
+  if (diffDays <= 3) {
+    const caption = diffDays < 0 ? `Atrasado ${Math.abs(diffDays)} dia(s)` : `Vence em ${Math.max(diffDays, 0)} dia(s)`
+    return { className: 'danger', caption }
+  }
+  if (diffDays <= 7) {
+    return { className: 'warning', caption: `Vence em ${diffDays} dia(s)` }
+  }
+  return { className: 'ok', caption: 'OK' }
 }
 
 export function ClientesCadastrarPage() {
@@ -359,9 +401,17 @@ export function ClientesVisualizarPage() {
   const [clientes, setClientes] = useState([])
   const [adAccounts, setAdAccounts] = useState([])
   const [selectedIds, setSelectedIds] = useState([])
+  const [showOnlySelected, setShowOnlySelected] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [nichoFilter, setNichoFilter] = useState('')
+  const [formaFilter, setFormaFilter] = useState('')
+  const [periodoFilter, setPeriodoFilter] = useState('')
+  const [statusFinanceiroFilter, setStatusFinanceiroFilter] = useState('')
+  const [bulkPeriodoCobranca, setBulkPeriodoCobranca] = useState('')
+  const [bulkFormaPagamento, setBulkFormaPagamento] = useState('')
   const [loading, setLoading] = useState(false)
-  const [requestLoading, setRequestLoading] = useState(false)
   const [deletingLoading, setDeletingLoading] = useState(false)
+  const [bulkUpdating, setBulkUpdating] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingForm, setEditingForm] = useState({
@@ -379,8 +429,58 @@ export function ClientesVisualizarPage() {
   const [errorMsg, setErrorMsg] = useState('')
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
-  const allSelected = clientes.length > 0 && selectedIds.length === clientes.length
-  const isBusy = loading || requestLoading || deletingLoading || savingEdit
+  const filteredClientes = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    return clientes.filter((row) => {
+      if (showOnlySelected && !selectedSet.has(row.id)) return false
+      if (term) {
+        const haystack = [
+          row.name,
+          row.nome,
+          row.id_meta_ad_account,
+          row.nicho_atuacao,
+        ]
+          .map((part) => String(part || '').toLowerCase())
+          .join(' ')
+        if (!haystack.includes(term)) return false
+      }
+      if (nichoFilter && String(row.nicho_atuacao || '') !== nichoFilter) return false
+      if (formaFilter && String(row.forma_pagamento || '') !== formaFilter) return false
+      if (periodoFilter && String(row.periodo_cobranca || '') !== periodoFilter) return false
+      if (statusFinanceiroFilter && getFinancialStatus(row).value !== statusFinanceiroFilter) return false
+      return true
+    })
+  }, [
+    clientes,
+    showOnlySelected,
+    selectedSet,
+    searchTerm,
+    nichoFilter,
+    formaFilter,
+    periodoFilter,
+    statusFinanceiroFilter,
+  ])
+  const allSelected =
+    filteredClientes.length > 0 && filteredClientes.every((row) => selectedSet.has(row.id))
+  const isBusy = loading || deletingLoading || bulkUpdating || savingEdit
+  const nichoOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          clientes
+            .map((row) => String(row.nicho_atuacao || '').trim())
+            .filter((value) => value.length > 0),
+        ),
+      ).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [clientes],
+  )
+  const resumo = useMemo(() => {
+    const totalClientes = filteredClientes.length
+    const investimentoTotal = filteredClientes.reduce((acc, row) => acc + toNumeric(row.valor_investido), 0)
+    const saldoTotal = filteredClientes.reduce((acc, row) => acc + toNumeric(row.saldo_atual), 0)
+    const criticos = filteredClientes.filter((row) => getFinancialStatus(row).value === 'critico').length
+    return { totalClientes, investimentoTotal, saldoTotal, criticos }
+  }, [filteredClientes])
 
   const loadAdAccounts = useCallback(async () => {
     try {
@@ -404,6 +504,7 @@ export function ClientesVisualizarPage() {
       const saldoSyncFeedback = formatSaldoSyncFeedback(response.data?.saldo_sync)
       setClientes(rows)
       setSelectedIds([])
+      setShowOnlySelected(false)
       setEditingId(null)
       setFeedback(
         saldoSyncFeedback
@@ -440,7 +541,12 @@ export function ClientesVisualizarPage() {
       setSelectedIds([])
       return
     }
-    setSelectedIds(clientes.map((row) => row.id))
+    const visibleIds = filteredClientes.map((row) => row.id)
+    setSelectedIds((prev) => {
+      const merged = new Set(prev)
+      visibleIds.forEach((id) => merged.add(id))
+      return Array.from(merged)
+    })
   }
 
   const handleVisualizarSelecionados = async () => {
@@ -449,25 +555,17 @@ export function ClientesVisualizarPage() {
       setFeedback('')
       return
     }
-
-    setRequestLoading(true)
     setErrorMsg('')
     setFeedback('')
-    try {
-      const response = await api.get('/api/empresa/clientes', {
-        params: { ids: selectedIds.join(',') },
-      })
-      const rows = response.data?.clientes || []
-      setClientes(rows)
-      setSelectedIds(rows.map((row) => row.id))
-      setEditingId(null)
-      setFeedback(`Exibindo ${formatNumber(rows.length)} cliente(s) selecionado(s).`)
-    } catch (error) {
-      logUiError('clientes-visualizar', 'empresa-clientes-get-by-ids', error)
-      setErrorMsg(error.response?.data?.detail || 'Falha ao visualizar clientes selecionados.')
-    } finally {
-      setRequestLoading(false)
-    }
+    setShowOnlySelected(true)
+    setEditingId(null)
+    setFeedback(`Exibindo ${formatNumber(selectedIds.length)} cliente(s) selecionado(s).`)
+  }
+
+  const handleVerTodos = () => {
+    setShowOnlySelected(false)
+    setErrorMsg('')
+    setFeedback(`Exibindo todos os clientes (${formatNumber(clientes.length)}).`)
   }
 
   const startEdit = (row) => {
@@ -594,35 +692,211 @@ export function ClientesVisualizarPage() {
     }
   }
 
-  return (
-    <section className="view-card clientes-view">
-      <h2>Clientes / Visualizar</h2>
-      <p className="view-description">Visualize todos os clientes ou apenas os selecionados.</p>
+  const handleBulkUpdate = async (field, value, successLabel) => {
+    const parsedValue = String(value || '').trim()
+    if (selectedIds.length === 0) {
+      setErrorMsg('Selecione ao menos um cliente para atualizar em massa.')
+      setFeedback('')
+      return
+    }
+    if (!parsedValue) {
+      setErrorMsg(`Selecione um valor para ${successLabel.toLowerCase()}.`)
+      setFeedback('')
+      return
+    }
 
-      <div className="clientes-actions">
-        <button
-          type="button"
-          className="primary-btn"
-          onClick={handleVisualizarSelecionados}
-          disabled={isBusy || selectedIds.length === 0}
-        >
-          {requestLoading ? 'Carregando selecionados...' : 'Visualizar selecionados'}
-        </button>
-        <button type="button" className="primary-btn" onClick={loadClientes} disabled={isBusy}>
-          {loading ? 'Atualizando...' : 'Ver todos'}
-        </button>
-        <button
-          type="button"
-          className="table-action-btn table-action-btn-secondary"
-          onClick={handleExcluirSelecionados}
-          disabled={isBusy || selectedIds.length === 0}
-        >
-          {deletingLoading ? 'Excluindo...' : 'Excluir selecionados'}
-        </button>
-        <span className="hint-neutral">
-          Selecionados: {formatNumber(selectedIds.length)} de {formatNumber(clientes.length)}
-        </span>
+    setBulkUpdating(true)
+    setErrorMsg('')
+    setFeedback('')
+    try {
+      const responses = await Promise.all(
+        selectedIds.map((id) =>
+          api.patch(`/api/empresa/clientes/${id}`, {
+            [field]: parsedValue,
+          }),
+        ),
+      )
+      const updatesMap = new Map(
+        responses
+          .map((response) => response.data?.cliente)
+          .filter(Boolean)
+          .map((cliente) => [cliente.id, cliente]),
+      )
+      setClientes((prev) => prev.map((row) => updatesMap.get(row.id) || row))
+      setFeedback(`${formatNumber(selectedIds.length)} cliente(s) atualizado(s): ${successLabel}.`)
+      if (field === 'periodo_cobranca') setBulkPeriodoCobranca('')
+      if (field === 'forma_pagamento') setBulkFormaPagamento('')
+    } catch (error) {
+      logUiError('clientes-visualizar', `empresa-clientes-bulk-${field}`, error)
+      setErrorMsg(error.response?.data?.detail || 'Falha ao atualizar clientes em massa.')
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
+  const handleRowClick = (event, row) => {
+    if (editingId !== null || isBusy) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    if (target.closest('button, input, select, a, textarea, label')) return
+    startEdit(row)
+  }
+
+  return (
+    <section className="view-card clientes-view clientes-visualizar-view">
+      <p className="clientes-breadcrumb">Clientes &gt; Carteira</p>
+      <h2>Clientes / Visualizar</h2>
+      <p className="view-description">Gerencie carteira, risco financeiro e dados comerciais dos clientes.</p>
+
+      <div className="clientes-summary-grid">
+        <article className="clientes-summary-card">
+          <p className="clientes-summary-label">Total de clientes</p>
+          <p className="clientes-summary-value">{formatNumber(resumo.totalClientes)}</p>
+        </article>
+        <article className="clientes-summary-card">
+          <p className="clientes-summary-label">Investimento total mensal</p>
+          <p className="clientes-summary-value">{formatCurrency(resumo.investimentoTotal)}</p>
+        </article>
+        <article className="clientes-summary-card">
+          <p className="clientes-summary-label">Saldo total disponivel</p>
+          <p className="clientes-summary-value">{formatCurrency(resumo.saldoTotal)}</p>
+        </article>
+        <article className="clientes-summary-card clientes-summary-card-danger">
+          <p className="clientes-summary-label">Clientes com saldo critico</p>
+          <p className="clientes-summary-value">{formatNumber(resumo.criticos)}</p>
+        </article>
       </div>
+
+      <div className="clientes-filters-panel">
+        <div className="clientes-search-box">
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Buscar por cliente, AdAccount ou ID Meta..."
+            disabled={isBusy}
+          />
+        </div>
+        <div className="clientes-filter-grid">
+          <select value={nichoFilter} onChange={(event) => setNichoFilter(event.target.value)} disabled={isBusy}>
+            <option value="">Todos os nichos</option>
+            {nichoOptions.map((nicho) => (
+              <option key={nicho} value={nicho}>
+                {nicho}
+              </option>
+            ))}
+          </select>
+          <select value={formaFilter} onChange={(event) => setFormaFilter(event.target.value)} disabled={isBusy}>
+            <option value="">Todas as formas</option>
+            {FORMA_PAGAMENTO_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <select value={periodoFilter} onChange={(event) => setPeriodoFilter(event.target.value)} disabled={isBusy}>
+            <option value="">Todos os periodos</option>
+            {PERIODO_COBRANCA_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <select
+            value={statusFinanceiroFilter}
+            onChange={(event) => setStatusFinanceiroFilter(event.target.value)}
+            disabled={isBusy}
+          >
+            <option value="">Status financeiro</option>
+            <option value="critico">Critico</option>
+            <option value="atencao">Atencao</option>
+            <option value="ok">OK</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="clientes-actions-toolbar">
+        <div className="clientes-actions-group">
+          <span className="clientes-actions-label">Acoes de filtro</span>
+          <button type="button" className="primary-btn" onClick={handleVerTodos} disabled={isBusy}>
+            {loading ? 'Atualizando...' : 'Ver todos'}
+          </button>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={handleVisualizarSelecionados}
+            disabled={isBusy || selectedIds.length === 0}
+          >
+            Apenas selecionados
+          </button>
+          {showOnlySelected ? <span className="clientes-chip">Filtro ativo: selecionados</span> : null}
+        </div>
+        <div className="clientes-actions-group clientes-actions-danger">
+          <span className="clientes-actions-label">Acoes perigosas</span>
+          <button
+            type="button"
+            className="table-action-btn table-action-btn-secondary"
+            onClick={handleExcluirSelecionados}
+            disabled={isBusy || selectedIds.length === 0}
+          >
+            {deletingLoading ? 'Excluindo...' : 'Excluir selecionados'}
+          </button>
+          <button type="button" className="table-action-btn" onClick={loadClientes} disabled={isBusy}>
+            Atualizar lista
+          </button>
+        </div>
+      </div>
+
+      {selectedIds.length > 0 ? (
+        <div className="clientes-context-bar">
+          <p>
+            <strong>{formatNumber(selectedIds.length)}</strong> cliente(s) selecionado(s)
+          </p>
+          <div className="clientes-context-actions">
+            <select
+              value={bulkPeriodoCobranca}
+              onChange={(event) => setBulkPeriodoCobranca(event.target.value)}
+              disabled={isBusy}
+            >
+              <option value="">Alterar periodo</option>
+              {PERIODO_COBRANCA_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => handleBulkUpdate('periodo_cobranca', bulkPeriodoCobranca, 'Periodo de cobranca')}
+              disabled={isBusy || !bulkPeriodoCobranca}
+            >
+              Aplicar periodo
+            </button>
+            <select
+              value={bulkFormaPagamento}
+              onChange={(event) => setBulkFormaPagamento(event.target.value)}
+              disabled={isBusy}
+            >
+              <option value="">Atualizar forma</option>
+              {FORMA_PAGAMENTO_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => handleBulkUpdate('forma_pagamento', bulkFormaPagamento, 'Forma de pagamento')}
+              disabled={isBusy || !bulkFormaPagamento}
+            >
+              Aplicar forma
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {feedback ? <p className="hint-ok">{feedback}</p> : null}
       {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
@@ -632,41 +906,55 @@ export function ClientesVisualizarPage() {
           <thead>
             <tr>
               <th className="clientes-select-cell">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={(event) => toggleSelectAll(event.target.checked)}
-                  disabled={clientes.length === 0 || isBusy}
-                  aria-label="Selecionar todos os clientes"
-                />
+                <div className="clientes-select-header">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(event) => toggleSelectAll(event.target.checked)}
+                    disabled={filteredClientes.length === 0 || isBusy}
+                    aria-label="Selecionar todos os clientes"
+                  />
+                  <small>
+                    Sel.: {formatNumber(selectedIds.length)} de {formatNumber(filteredClientes.length)}
+                  </small>
+                </div>
               </th>
               <th>Name (Cliente)</th>
               <th>Nome (AdAccount)</th>
               <th>ID Meta AdAccount</th>
               <th>Data renovacao creditos</th>
               <th>Nicho de atuacao</th>
-              <th>Valor investido</th>
+              <th className="clientes-col-money">Valor investido</th>
               <th>Forma de pagamento</th>
               <th>Periodo de cobranca</th>
-              <th>Saldo atual</th>
-              <th>Gasto diario</th>
+              <th className="clientes-col-money">Saldo atual</th>
+              <th>Status financeiro</th>
+              <th className="clientes-col-money">Gasto diario</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {clientes.length === 0 ? (
+            {filteredClientes.length === 0 ? (
               <tr>
-                <td colSpan="12">Nenhum cliente encontrado.</td>
+                <td colSpan="13">Nenhum cliente encontrado com os filtros atuais.</td>
               </tr>
             ) : (
-              clientes.map((row) => {
+              filteredClientes.map((row) => {
                 const isEditing = editingId === row.id
                 const editingAdAccount = isEditing
                   ? adAccounts.find((adAccount) => String(adAccount.id) === String(editingForm.nome))
                   : null
+                const renovacaoStatus = getRenovacaoStatus(row.data_renovacao_creditos)
+                const financialStatus = getFinancialStatus(row)
 
                 return (
-                  <tr key={row.id} className={selectedSet.has(row.id) ? 'clientes-row-selected' : ''}>
+                  <tr
+                    key={row.id}
+                    className={`${selectedSet.has(row.id) ? 'clientes-row-selected' : ''} ${
+                      !isEditing ? 'clientes-row-clickable' : ''
+                    }`}
+                    onClick={(event) => handleRowClick(event, row)}
+                  >
                     <td className="clientes-select-cell">
                       <input
                         type="checkbox"
@@ -724,15 +1012,14 @@ export function ClientesVisualizarPage() {
                           required
                         />
                       ) : (
-                        <span
-                          className={
-                            isRenovacaoEmMenosDeDoisDias(row.data_renovacao_creditos)
-                              ? 'clientes-date-warning'
-                              : ''
-                          }
-                        >
-                          {formatDate(row.data_renovacao_creditos)}
-                        </span>
+                        <div className="clientes-date-status">
+                          <span className={`clientes-date-badge ${renovacaoStatus.className}`}>
+                            {formatDate(row.data_renovacao_creditos)}
+                          </span>
+                          <small className={`clientes-date-caption ${renovacaoStatus.className}`}>
+                            {renovacaoStatus.caption}
+                          </small>
+                        </div>
                       )}
                     </td>
                     <td>
@@ -748,7 +1035,7 @@ export function ClientesVisualizarPage() {
                         row.nicho_atuacao || '-'
                       )}
                     </td>
-                    <td>
+                    <td className="clientes-cell-money">
                       {isEditing ? (
                         <input
                           className="clientes-cell-input"
@@ -802,7 +1089,7 @@ export function ClientesVisualizarPage() {
                         row.periodo_cobranca || '-'
                       )}
                     </td>
-                    <td>
+                    <td className="clientes-cell-money">
                       {isEditing ? (
                         <input
                           className="clientes-cell-input"
@@ -817,6 +1104,11 @@ export function ClientesVisualizarPage() {
                       )}
                     </td>
                     <td>
+                      <span className={`clientes-financial-badge ${financialStatus.className}`}>
+                        {financialStatus.label}
+                      </span>
+                    </td>
+                    <td className="clientes-cell-money">
                       {isEditing ? (
                         <input
                           className="clientes-cell-input"
