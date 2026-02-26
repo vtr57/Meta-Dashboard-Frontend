@@ -104,7 +104,7 @@
   position: fixed;
   inset: 0 auto 0 0;
   width: 288px;
-  background: #8fb8ff;
+  background: #001944;
   color: #f5f9ff;
   padding: 1.4rem 1rem;
   display: flex;
@@ -134,7 +134,7 @@
 .sidebar-link {
   display: block;
   text-decoration: none;
-  color: #082f6e;
+  color: #d2e1fa;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
@@ -143,9 +143,15 @@
 }
 
 .sidebar-link.active {
-  background: #ffffff;
-  color: #082f6e;
-  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  color: #d2e1fa;
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.sidebar-link:hover {
+  background: #d2e1fa;
+  color: #001944;
+  border-color: #d2e1fa;
 }
 
 .sidebar-toggle {
@@ -179,7 +185,7 @@
 .sidebar-sublink {
   display: block;
   text-decoration: none;
-  color: #082f6e;
+  color: #d2e1fa;
   background: rgba(255, 255, 255, 0.09);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
@@ -189,9 +195,15 @@
 }
 
 .sidebar-sublink.active {
-  background: #ffffff;
-  color: #082f6e;
-  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  color: #d2e1fa;
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.sidebar-sublink:hover {
+  background: #d2e1fa;
+  color: #001944;
+  border-color: #d2e1fa;
 }
 
 .sidebar-button,
@@ -208,6 +220,12 @@
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: #082f6e;
+}
+
+.sidebar-button:not(:disabled):hover,
+.primary-btn:not(:disabled):hover {
+  background: #d2e1fa;
+  color: #001944;
 }
 
 .app-main {
