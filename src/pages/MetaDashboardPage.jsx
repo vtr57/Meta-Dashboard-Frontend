@@ -639,53 +639,6 @@ export default function MetaDashboardPage() {
         />
       </div>
 
-      <div className="meta-notes-layout">
-        <article className="meta-notes-card">
-          <h3>Nova anotação</h3>
-          <p className="meta-notes-account">
-            Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
-          </p>
-          <textarea
-            className="meta-notes-input"
-            value={anotacaoTexto}
-            onChange={(event) => setAnotacaoTexto(event.target.value)}
-            placeholder="Escreva uma observacao sobre esta conta..."
-            disabled={!filters.ad_account_id || anotacoesSubmitting}
-          />
-          <div className="meta-notes-actions">
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={handleSalvarAnotacao}
-              disabled={!filters.ad_account_id || anotacoesSubmitting}
-            >
-              {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
-          {anotacoesFeedback ? <p className="hint-ok">{anotacoesFeedback}</p> : null}
-          {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
-        </article>
-        <article className="meta-notes-card">
-          <h3>Anotações da conta</h3>
-          {!filters.ad_account_id ? (
-            <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
-          ) : anotacoesLoading ? (
-            <p className="hint-neutral">Carregando anotacoes...</p>
-          ) : anotacoes.length === 0 ? (
-            <p className="hint-neutral">Nenhuma anotacao cadastrada para esta conta.</p>
-          ) : (
-            <div className="meta-notes-list">
-              {anotacoes.map((item) => (
-                <article key={item.id} className="meta-note-item">
-                  <p>{item.observacoes}</p>
-                  <small>{formatDateTime(item.data_criacao)}</small>
-                </article>
-              ))}
-            </div>
-          )}
-        </article>
-      </div>
-
       <div className="chart-and-kpis">
         <article className="chart-card">
           <h3>Serie temporal de insights</h3>
@@ -741,6 +694,52 @@ export default function MetaDashboardPage() {
               <p className="kpi-value">{formatCorrelation(kpis?.correlacao_gasto_resultados)}</p>
             </article>
           </div>
+        </article>
+      </div>
+      <div className="meta-notes-layout">
+        <article className="meta-notes-card">
+          <h3>Nova anotação</h3>
+          <p className="meta-notes-account">
+            Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
+          </p>
+          <textarea
+            className="meta-notes-input"
+            value={anotacaoTexto}
+            onChange={(event) => setAnotacaoTexto(event.target.value)}
+            placeholder="Escreva uma observacao sobre esta conta..."
+            disabled={!filters.ad_account_id || anotacoesSubmitting}
+          />
+          <div className="meta-notes-actions">
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleSalvarAnotacao}
+              disabled={!filters.ad_account_id || anotacoesSubmitting}
+            >
+              {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+          {anotacoesFeedback ? <p className="hint-ok">{anotacoesFeedback}</p> : null}
+          {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
+        </article>
+        <article className="meta-notes-card">
+          <h3>Anotações da conta</h3>
+          {!filters.ad_account_id ? (
+            <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
+          ) : anotacoesLoading ? (
+            <p className="hint-neutral">Carregando anotacoes...</p>
+          ) : anotacoes.length === 0 ? (
+            <p className="hint-neutral">Nenhuma anotacao cadastrada para esta conta.</p>
+          ) : (
+            <div className="meta-notes-list">
+              {anotacoes.map((item) => (
+                <article key={item.id} className="meta-note-item">
+                  <p>{item.observacoes}</p>
+                  <small>{formatDateTime(item.data_criacao)}</small>
+                </article>
+              ))}
+            </div>
+          )}
         </article>
       </div>
     </section>
