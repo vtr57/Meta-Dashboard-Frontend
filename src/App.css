@@ -953,6 +953,189 @@
   max-width: 720px;
 }
 
+.clientes-breadcrumb {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #3d5f90;
+  font-weight: 700;
+}
+
+.clientes-cadastrar-view {
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(8, 47, 110, 0.07);
+}
+
+.clientes-cadastro-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.clientes-cadastro-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.clientes-cadastro-card {
+  border: 1px solid #b9cff0;
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  box-shadow: 0 6px 18px rgba(8, 47, 110, 0.06);
+}
+
+.clientes-cadastro-card h3 {
+  margin: 0;
+  color: #082f6e;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.clientes-cadastro-fields {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.clientes-campo {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.clientes-campo-wide {
+  grid-column: 1 / -1;
+}
+
+.clientes-campo label {
+  color: #082f6e;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.required-mark {
+  color: #b42318;
+  font-weight: 800;
+}
+
+.optional-mark {
+  color: #4f709b;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.clientes-campo input,
+.clientes-campo select {
+  border: 1px solid #9cb8e2;
+  background: #f8fbff;
+  border-radius: 8px;
+  padding: 0.66rem 0.72rem;
+  color: #0f2950;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.clientes-campo input:hover,
+.clientes-campo select:hover {
+  border-color: #6f97d4;
+  background: #ffffff;
+}
+
+.clientes-campo input:focus,
+.clientes-campo select:focus {
+  outline: none;
+  border-color: #0b4ea2;
+  box-shadow: 0 0 0 3px rgba(11, 78, 162, 0.16);
+  background: #ffffff;
+}
+
+.currency-input {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #9cb8e2;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 0 0.6rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.currency-input > span {
+  color: #2d4f80;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.currency-input input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0.66rem 0;
+}
+
+.currency-input:hover {
+  border-color: #6f97d4;
+  background: #ffffff;
+}
+
+.currency-input:focus-within {
+  border-color: #0b4ea2;
+  box-shadow: 0 0 0 3px rgba(11, 78, 162, 0.16);
+  background: #ffffff;
+}
+
+.adaccount-details {
+  margin-top: 0.4rem;
+  border: 1px solid #bed0ee;
+  border-radius: 8px;
+  background: #edf3ff;
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.adaccount-details strong {
+  color: #0f315f;
+}
+
+.adaccount-details p {
+  margin: 0.2rem 0 0;
+  color: #325481;
+  font-size: 0.82rem;
+}
+
+.adaccount-badge {
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: #e9f8ee;
+  color: #0f5b2b;
+  border: 1px solid #97d6ad;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.adaccount-placeholder {
+  margin: 0.15rem 0 0;
+  color: #4b6f9c;
+  font-size: 0.82rem;
+}
+
+.clientes-submit-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.clientes-submit-btn {
+  min-width: 220px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
 .clientes-actions {
   display: flex;
   align-items: center;
@@ -1089,6 +1272,10 @@
   }
 
   .sync-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clientes-cadastro-fields {
     grid-template-columns: 1fr;
   }
 }

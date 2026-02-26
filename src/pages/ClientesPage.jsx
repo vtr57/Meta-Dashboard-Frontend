@@ -84,6 +84,11 @@ export function ClientesCadastrarPage() {
     loadAdAccounts()
   }, [loadAdAccounts])
 
+  const selectedAdAccount = useMemo(
+    () => adAccounts.find((row) => String(row.id) === String(nome)) || null,
+    [adAccounts, nome],
+  )
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitting(true)
@@ -121,130 +126,210 @@ export function ClientesCadastrarPage() {
   }
 
   return (
-    <section className="view-card clientes-view">
+    <section className="view-card clientes-view clientes-cadastrar-view">
+      <p className="clientes-breadcrumb">Clientes &gt; Novo cliente</p>
       <h2>Clientes / Cadastrar</h2>
       <p className="view-description">
         Cadastre clientes informando o AdAccount, data de renovacao e dados financeiros/comerciais.
       </p>
 
-      <form className="sync-block clientes-form" onSubmit={handleSubmit}>
-        <h3>Formulario de cadastro</h3>
-        <div className="form-grid">
-          <label htmlFor="cliente-name">Name (Cliente)</label>
-          <input
-            id="cliente-name"
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            disabled={submitting}
-            placeholder="Digite o name do cliente"
-            required
-          />
+      <form className="clientes-cadastro-form" onSubmit={handleSubmit}>
+        <div className="clientes-cadastro-grid">
+          <article className="clientes-cadastro-card">
+            <h3>
+              <i className="fa-solid fa-address-card" aria-hidden="true" /> Informacoes basicas
+            </h3>
+            <div className="clientes-cadastro-fields">
+              <div className="clientes-campo">
+                <label htmlFor="cliente-name">
+                  Nome do cliente <span className="required-mark">*</span>
+                </label>
+                <input
+                  id="cliente-name"
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  disabled={submitting}
+                  placeholder="Digite o nome do cliente"
+                  required
+                />
+              </div>
 
-          <label htmlFor="cliente-nome">AdAccount (campo nome)</label>
-          <select
-            id="cliente-nome"
-            value={nome}
-            onChange={(event) => setNome(event.target.value)}
-            disabled={accountsLoading || submitting}
-            required
-          >
-            <option value="">Selecione um AdAccount</option>
-            {adAccounts.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.name || row.id_meta_ad_account}
-              </option>
-            ))}
-          </select>
+              <div className="clientes-campo">
+                <label htmlFor="cliente-nicho">
+                  Nicho de atuacao <span className="optional-mark">(opcional)</span>
+                </label>
+                <input
+                  id="cliente-nicho"
+                  type="text"
+                  value={nichoAtuacao}
+                  onChange={(event) => setNichoAtuacao(event.target.value)}
+                  disabled={submitting}
+                  placeholder="Ex.: Ecommerce"
+                />
+              </div>
 
-          <label htmlFor="data-renovacao">Data de renovacao dos creditos</label>
-          <input
-            id="data-renovacao"
-            type="date"
-            value={dataRenovacaoCreditos}
-            onChange={(event) => setDataRenovacaoCreditos(event.target.value)}
-            disabled={submitting}
-            required
-          />
+              <div className="clientes-campo clientes-campo-wide">
+                <label htmlFor="cliente-nome">
+                  AdAccount <span className="required-mark">*</span>
+                </label>
+                <select
+                  id="cliente-nome"
+                  value={nome}
+                  onChange={(event) => setNome(event.target.value)}
+                  disabled={accountsLoading || submitting}
+                  required
+                >
+                  <option value="">Selecione um AdAccount</option>
+                  {adAccounts.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name || 'Sem nome'} - ID: {row.id_meta_ad_account}
+                    </option>
+                  ))}
+                </select>
 
-          <label htmlFor="cliente-nicho">Nicho de atuacao</label>
-          <input
-            id="cliente-nicho"
-            type="text"
-            value={nichoAtuacao}
-            onChange={(event) => setNichoAtuacao(event.target.value)}
-            disabled={submitting}
-            placeholder="Ex.: Ecommerce"
-          />
+                {selectedAdAccount ? (
+                  <div className="adaccount-details">
+                    <div>
+                      <strong>{selectedAdAccount.name || 'Sem nome'}</strong>
+                      <p>ID: {selectedAdAccount.id_meta_ad_account}</p>
+                    </div>
+                    <span className="adaccount-badge">Ativa</span>
+                  </div>
+                ) : (
+                  <p className="adaccount-placeholder">Selecione um AdAccount para visualizar os detalhes.</p>
+                )}
+              </div>
+            </div>
+          </article>
 
-          <label htmlFor="cliente-valor-investido">Valor investido</label>
-          <input
-            id="cliente-valor-investido"
-            type="number"
-            step="0.01"
-            value={valorInvestido}
-            onChange={(event) => setValorInvestido(event.target.value)}
-            disabled={submitting}
-            placeholder="0.00"
-          />
+          <article className="clientes-cadastro-card">
+            <h3>
+              <i className="fa-solid fa-file-invoice-dollar" aria-hidden="true" /> Contrato / Cobranca
+            </h3>
+            <div className="clientes-cadastro-fields">
+              <div className="clientes-campo">
+                <label htmlFor="cliente-forma-pagamento">
+                  Forma de pagamento <span className="required-mark">*</span>
+                </label>
+                <select
+                  id="cliente-forma-pagamento"
+                  value={formaPagamento}
+                  onChange={(event) => setFormaPagamento(event.target.value)}
+                  disabled={submitting}
+                  required
+                >
+                  <option value="">Selecione uma forma de pagamento</option>
+                  {FORMA_PAGAMENTO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <label htmlFor="cliente-forma-pagamento">Forma de pagamento</label>
-          <select
-            id="cliente-forma-pagamento"
-            value={formaPagamento}
-            onChange={(event) => setFormaPagamento(event.target.value)}
-            disabled={submitting}
-            required
-          >
-            <option value="">Selecione uma forma de pagamento</option>
-            {FORMA_PAGAMENTO_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+              <div className="clientes-campo">
+                <label htmlFor="cliente-periodo-cobranca">
+                  Periodo de cobranca <span className="required-mark">*</span>
+                </label>
+                <select
+                  id="cliente-periodo-cobranca"
+                  value={periodoCobranca}
+                  onChange={(event) => setPeriodoCobranca(event.target.value)}
+                  disabled={submitting}
+                  required
+                >
+                  <option value="">Selecione um periodo de cobranca</option>
+                  {PERIODO_COBRANCA_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <label htmlFor="cliente-periodo-cobranca">Periodo de cobranca</label>
-          <select
-            id="cliente-periodo-cobranca"
-            value={periodoCobranca}
-            onChange={(event) => setPeriodoCobranca(event.target.value)}
-            disabled={submitting}
-            required
-          >
-            <option value="">Selecione um periodo de cobranca</option>
-            {PERIODO_COBRANCA_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+              <div className="clientes-campo clientes-campo-wide">
+                <label htmlFor="data-renovacao">
+                  Data de renovacao dos creditos <span className="required-mark">*</span>
+                </label>
+                <input
+                  id="data-renovacao"
+                  type="date"
+                  value={dataRenovacaoCreditos}
+                  onChange={(event) => setDataRenovacaoCreditos(event.target.value)}
+                  disabled={submitting}
+                  required
+                />
+              </div>
+            </div>
+          </article>
 
-          <label htmlFor="cliente-saldo-atual">Saldo atual</label>
-          <input
-            id="cliente-saldo-atual"
-            type="number"
-            step="0.01"
-            value={saldoAtual}
-            onChange={(event) => setSaldoAtual(event.target.value)}
-            disabled={submitting}
-            placeholder="0.00"
-          />
+          <article className="clientes-cadastro-card">
+            <h3>
+              <i className="fa-solid fa-sack-dollar" aria-hidden="true" /> Dados financeiros
+            </h3>
+            <div className="clientes-cadastro-fields">
+              <div className="clientes-campo">
+                <label htmlFor="cliente-valor-investido">
+                  Valor investido <span className="optional-mark">(opcional)</span>
+                </label>
+                <div className="currency-input">
+                  <span>R$</span>
+                  <input
+                    id="cliente-valor-investido"
+                    type="number"
+                    step="0.01"
+                    value={valorInvestido}
+                    onChange={(event) => setValorInvestido(event.target.value)}
+                    disabled={submitting}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
 
-          <label htmlFor="cliente-gasto-diario">Gasto diario</label>
-          <input
-            id="cliente-gasto-diario"
-            type="number"
-            step="0.01"
-            value={gastoDiario}
-            onChange={(event) => setGastoDiario(event.target.value)}
-            disabled={submitting}
-            placeholder="0.00"
-          />
+              <div className="clientes-campo">
+                <label htmlFor="cliente-saldo-atual">
+                  Saldo atual <span className="optional-mark">(opcional)</span>
+                </label>
+                <div className="currency-input">
+                  <span>R$</span>
+                  <input
+                    id="cliente-saldo-atual"
+                    type="number"
+                    step="0.01"
+                    value={saldoAtual}
+                    onChange={(event) => setSaldoAtual(event.target.value)}
+                    disabled={submitting}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
 
+              <div className="clientes-campo clientes-campo-wide">
+                <label htmlFor="cliente-gasto-diario">
+                  Gasto diario <span className="optional-mark">(opcional)</span>
+                </label>
+                <div className="currency-input">
+                  <span>R$</span>
+                  <input
+                    id="cliente-gasto-diario"
+                    type="number"
+                    step="0.01"
+                    value={gastoDiario}
+                    onChange={(event) => setGastoDiario(event.target.value)}
+                    disabled={submitting}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div className="clientes-submit-row">
           <button
             type="submit"
-            className="primary-btn"
+            className="primary-btn clientes-submit-btn"
             disabled={
               submitting ||
               accountsLoading ||
@@ -255,7 +340,7 @@ export function ClientesCadastrarPage() {
               !periodoCobranca
             }
           >
-            {submitting ? 'Cadastrando...' : 'Cadastrar cliente'}
+            <i className="fa-solid fa-user-plus" aria-hidden="true" /> {submitting ? 'Salvando...' : 'Criar cliente'}
           </button>
         </div>
       </form>
