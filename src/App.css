@@ -106,6 +106,8 @@
   width: 288px;
   background: #001944;
   color: #f5f9ff;
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
   padding: 1.4rem 1rem;
   display: flex;
   flex-direction: column;
