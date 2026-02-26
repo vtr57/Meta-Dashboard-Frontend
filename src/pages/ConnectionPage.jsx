@@ -333,7 +333,7 @@ export default function ConnectionPage() {
     <section className="view-card view-card-meta connection-view">
       <header className="connection-page-header">
         <h2>
-          <i className="fa-solid fa-link" aria-hidden="true" /> Conexao / Sincronizacao
+          <i className="fa-solid fa-link" aria-hidden="true" /> Conexão / Sincronização
         </h2>
         <p className="view-description">
           Passo 1: conectar conta. Passo 2: sincronizar dados. Passo 3: acompanhar logs em tempo real.

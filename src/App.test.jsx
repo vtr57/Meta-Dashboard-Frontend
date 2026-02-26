@@ -62,7 +62,7 @@ describe('App frontend flows', () => {
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Secret123!' } })
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByRole('heading', { name: 'Conexao / Sincronizacao' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Conexão / Sincronização' })).toBeInTheDocument()
     expect(api.post).toHaveBeenCalledWith('/auth/login/', {
       username: 'alice',
       password: 'Secret123!',
@@ -134,7 +134,7 @@ describe('App frontend flows', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'Conexao / Sincronizacao' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Conexão / Sincronização' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sincronizar (7 dias)' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sincronizar Meta' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sincronizar Instagram' })).toBeInTheDocument()

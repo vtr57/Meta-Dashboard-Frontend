@@ -105,7 +105,7 @@ function AppLayout({ user, onLogout }) {
           >
             <span className="sidebar-link-content">
               <i className="fa-solid fa-link sidebar-link-icon" aria-hidden="true" />
-              <span>Conexao / Sincronizacao</span>
+              <span>Conexão / Sincronização</span>
             </span>
           </NavLink>
           <NavLink

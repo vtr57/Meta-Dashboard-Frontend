@@ -369,6 +369,7 @@ export function ClientesCadastrarPage() {
         </div>
 
         <div className="clientes-submit-row">
+          {feedback ? <p className="hint-ok clientes-submit-feedback">{feedback}</p> : null}
           <button
             type="submit"
             className="primary-btn clientes-submit-btn"
@@ -391,7 +392,6 @@ export function ClientesCadastrarPage() {
       {!accountsLoading && adAccounts.length === 0 ? (
         <p className="hint-warning">Nenhum AdAccount disponivel para cadastro.</p>
       ) : null}
-      {feedback ? <p className="hint-ok">{feedback}</p> : null}
       {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
     </section>
   )

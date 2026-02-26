@@ -212,6 +212,177 @@ function normalizeSeriesToDateRange(series, dateStart, dateEnd) {
   return normalized
 }
 
+function toSearchableItems(rows, idField) {
+  return (rows || [])
+    .map((row) => {
+      const id = String(row?.[idField] || '').trim()
+      if (!id) return null
+      const name = String(row?.name || '').trim()
+      const label = name && name !== id ? `${name} (${id})` : id
+      return {
+        id,
+        label,
+        searchIndex: `${name} ${id}`.toLowerCase(),
+      }
+    })
+    .filter(Boolean)
+}
+
+function SearchableMetaFilter({
+  value,
+  items,
+  placeholder,
+  disabled,
+  onChange,
+  ariaLabel,
+}) {
+  const rootRef = useRef(null)
+  const [query, setQuery] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const selected = items.find((item) => item.id === value)
+    setQuery(selected ? selected.label : '')
+  }, [items, value])
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!rootRef.current) return
+      if (rootRef.current.contains(event.target)) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
+
+  const filteredItems = useMemo(() => {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) return items.slice(0, 80)
+    return items.filter((item) => item.searchIndex.includes(normalized)).slice(0, 80)
+  }, [items, query])
+
+  const selectValue = useCallback(
+    (nextValue) => {
+      if (!nextValue) {
+        onChange('')
+        setQuery('')
+        setMenuOpen(false)
+        return
+      }
+      const selected = items.find((item) => item.id === nextValue)
+      onChange(nextValue)
+      setQuery(selected ? selected.label : '')
+      setMenuOpen(false)
+    },
+    [items, onChange],
+  )
+
+  const commitTypedValue = useCallback(() => {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) {
+      onChange('')
+      setQuery('')
+      return
+    }
+
+    const exactMatch = items.find(
+      (item) => item.id.toLowerCase() === normalized || item.label.toLowerCase() === normalized,
+    )
+    if (exactMatch) {
+      onChange(exactMatch.id)
+      setQuery(exactMatch.label)
+      return
+    }
+
+    const selected = items.find((item) => item.id === value)
+    setQuery(selected ? selected.label : '')
+  }, [items, onChange, query, value])
+
+  const handleInputBlur = () => {
+    window.setTimeout(() => {
+      if (!rootRef.current) return
+      if (rootRef.current.contains(document.activeElement)) return
+      commitTypedValue()
+      setMenuOpen(false)
+    }, 0)
+  }
+
+  const handleInputChange = (event) => {
+    const nextValue = event.target.value
+    setQuery(nextValue)
+    setMenuOpen(true)
+    if (!nextValue.trim()) {
+      onChange('')
+    }
+  }
+
+  const handleInputKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      if (filteredItems.length > 0) {
+        selectValue(filteredItems[0].id)
+      } else {
+        commitTypedValue()
+        setMenuOpen(false)
+      }
+      return
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      const selected = items.find((item) => item.id === value)
+      setQuery(selected ? selected.label : '')
+      setMenuOpen(false)
+    }
+  }
+
+  return (
+    <div className="searchable-select" ref={rootRef}>
+      <input
+        type="text"
+        value={query}
+        onChange={handleInputChange}
+        onFocus={() => setMenuOpen(true)}
+        onBlur={handleInputBlur}
+        onKeyDown={handleInputKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        aria-label={ariaLabel}
+      />
+      {menuOpen && !disabled ? (
+        <div className="searchable-select-menu" role="listbox" aria-label={ariaLabel}>
+          <button
+            type="button"
+            className={`searchable-select-option ${value === '' ? 'is-selected' : ''}`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              selectValue('')
+            }}
+          >
+            {placeholder}
+          </button>
+          {filteredItems.length === 0 ? (
+            <p className="searchable-select-empty">Nenhum resultado.</p>
+          ) : (
+            filteredItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`searchable-select-option ${value === item.id ? 'is-selected' : ''}`}
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  selectValue(item.id)
+                }}
+              >
+                {item.label}
+              </button>
+            ))
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export default function MetaDashboardPage() {
   const [filters, setFilters] = useState({
     ad_account_id: '',
@@ -235,6 +406,22 @@ export default function MetaDashboardPage() {
   const chartSeries = useMemo(
     () => normalizeSeriesToDateRange(series, filters.date_start, filters.date_end),
     [series, filters.date_start, filters.date_end],
+  )
+  const adAccountItems = useMemo(
+    () => toSearchableItems(options.ad_accounts, 'id_meta_ad_account'),
+    [options.ad_accounts],
+  )
+  const campaignItems = useMemo(
+    () => toSearchableItems(options.campaigns, 'id_meta_campaign'),
+    [options.campaigns],
+  )
+  const adsetItems = useMemo(
+    () => toSearchableItems(options.adsets, 'id_meta_adset'),
+    [options.adsets],
+  )
+  const adItems = useMemo(
+    () => toSearchableItems(options.ads, 'id_meta_ad'),
+    [options.ads],
   )
 
   const loadFilters = useCallback(async () => {
@@ -318,54 +505,38 @@ export default function MetaDashboardPage() {
     <section className="view-card">
       <h2>Dashboard Meta</h2>
       <div className="filter-grid">
-        <select
+        <SearchableMetaFilter
           value={filters.ad_account_id}
-          onChange={(event) => updateFilter('ad_account_id', event.target.value)}
+          items={adAccountItems}
+          onChange={(nextValue) => updateFilter('ad_account_id', nextValue)}
+          placeholder="Todos os ad accounts"
+          ariaLabel="Filtro de ad account"
           disabled={filtersLoading}
-        >
-          <option value="">Todos os ad accounts</option>
-          {options.ad_accounts.map((row) => (
-            <option key={row.id_meta_ad_account} value={row.id_meta_ad_account}>
-              {row.name || row.id_meta_ad_account}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <SearchableMetaFilter
           value={filters.campaign_id}
-          onChange={(event) => updateFilter('campaign_id', event.target.value)}
+          items={campaignItems}
+          onChange={(nextValue) => updateFilter('campaign_id', nextValue)}
+          placeholder="Todas as campaigns"
+          ariaLabel="Filtro de campaign"
           disabled={filtersLoading}
-        >
-          <option value="">Todas as campaigns</option>
-          {options.campaigns.map((row) => (
-            <option key={row.id_meta_campaign} value={row.id_meta_campaign}>
-              {row.name || row.id_meta_campaign}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <SearchableMetaFilter
           value={filters.adset_id}
-          onChange={(event) => updateFilter('adset_id', event.target.value)}
+          items={adsetItems}
+          onChange={(nextValue) => updateFilter('adset_id', nextValue)}
+          placeholder="Todos os adsets"
+          ariaLabel="Filtro de adset"
           disabled={filtersLoading}
-        >
-          <option value="">Todos os adsets</option>
-          {options.adsets.map((row) => (
-            <option key={row.id_meta_adset} value={row.id_meta_adset}>
-              {row.name || row.id_meta_adset}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <SearchableMetaFilter
           value={filters.ad_id}
-          onChange={(event) => updateFilter('ad_id', event.target.value)}
+          items={adItems}
+          onChange={(nextValue) => updateFilter('ad_id', nextValue)}
+          placeholder="Todos os ads"
+          ariaLabel="Filtro de ads"
           disabled={filtersLoading}
-        >
-          <option value="">Todos os ads</option>
-          {options.ads.map((row) => (
-            <option key={row.id_meta_ad} value={row.id_meta_ad}>
-              {row.name || row.id_meta_ad}
-            </option>
-          ))}
-        </select>
+        />
         <input
           type="date"
           value={filters.date_start}
