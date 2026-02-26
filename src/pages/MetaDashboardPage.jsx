@@ -659,7 +659,7 @@ export default function MetaDashboardPage() {
               onClick={handleSalvarAnotacao}
               disabled={!filters.ad_account_id || anotacoesSubmitting}
             >
-              {anotacoesSubmitting ? 'Salvando...' : 'Salvar anotacao'}
+              {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
           {anotacoesFeedback ? <p className="hint-ok">{anotacoesFeedback}</p> : null}
