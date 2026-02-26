@@ -5,6 +5,7 @@ import {
   daysAgo,
   formatCorrelation,
   formatCurrency,
+  formatDateTime,
   formatDecimal,
   formatNumber,
   logUiError,
@@ -403,6 +404,12 @@ export default function MetaDashboardPage() {
   const [filtersLoading, setFiltersLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [anotacoes, setAnotacoes] = useState([])
+  const [anotacaoTexto, setAnotacaoTexto] = useState('')
+  const [anotacoesLoading, setAnotacoesLoading] = useState(false)
+  const [anotacoesSubmitting, setAnotacoesSubmitting] = useState(false)
+  const [anotacoesError, setAnotacoesError] = useState('')
+  const [anotacoesFeedback, setAnotacoesFeedback] = useState('')
   const chartSeries = useMemo(
     () => normalizeSeriesToDateRange(series, filters.date_start, filters.date_end),
     [series, filters.date_start, filters.date_end],
@@ -432,6 +439,11 @@ export default function MetaDashboardPage() {
     () => toSearchableItems(options.ads, 'id_meta_ad'),
     [options.ads],
   )
+  const selectedAdAccountLabel = useMemo(() => {
+    if (!filters.ad_account_id) return ''
+    const selected = adAccountItems.find((item) => item.id === filters.ad_account_id)
+    return selected?.label || filters.ad_account_id
+  }, [adAccountItems, filters.ad_account_id])
 
   const loadFilters = useCallback(async () => {
     setFiltersLoading(true)
@@ -483,6 +495,29 @@ export default function MetaDashboardPage() {
     }
   }, [filters])
 
+  const loadAnotacoes = useCallback(async () => {
+    if (!filters.ad_account_id) {
+      setAnotacoes([])
+      setAnotacoesError('')
+      setAnotacoesFeedback('')
+      return
+    }
+
+    setAnotacoesLoading(true)
+    setAnotacoesError('')
+    try {
+      const response = await api.get('/api/meta/anotacoes', {
+        params: { ad_account_id: filters.ad_account_id },
+      })
+      setAnotacoes(response.data?.anotacoes || [])
+    } catch (error) {
+      logUiError('dashboard-meta', 'meta-anotacoes-get', error)
+      setAnotacoesError('Falha ao carregar anotacoes da conta selecionada.')
+    } finally {
+      setAnotacoesLoading(false)
+    }
+  }, [filters.ad_account_id])
+
   useEffect(() => {
     loadFilters()
   }, [loadFilters])
@@ -491,7 +526,16 @@ export default function MetaDashboardPage() {
     loadDashboardData()
   }, [loadDashboardData])
 
+  useEffect(() => {
+    loadAnotacoes()
+  }, [loadAnotacoes])
+
   const updateFilter = (field, value) => {
+    if (field === 'ad_account_id') {
+      setAnotacaoTexto('')
+      setAnotacoesError('')
+      setAnotacoesFeedback('')
+    }
     setFilters((prev) => {
       const next = { ...prev, [field]: value }
       if (field === 'ad_account_id') {
@@ -508,6 +552,43 @@ export default function MetaDashboardPage() {
       }
       return next
     })
+  }
+
+  const handleSalvarAnotacao = async () => {
+    const observacoes = anotacaoTexto.trim()
+    if (!filters.ad_account_id) {
+      setAnotacoesFeedback('')
+      setAnotacoesError('Selecione um ad account para salvar anotacoes.')
+      return
+    }
+    if (!observacoes) {
+      setAnotacoesFeedback('')
+      setAnotacoesError('Digite uma anotacao antes de salvar.')
+      return
+    }
+
+    setAnotacoesSubmitting(true)
+    setAnotacoesError('')
+    setAnotacoesFeedback('')
+    try {
+      const response = await api.post('/api/meta/anotacoes', {
+        id_meta_ad_account: filters.ad_account_id,
+        observacoes,
+      })
+      const novaAnotacao = response.data?.anotacao
+      if (novaAnotacao) {
+        setAnotacoes((prev) => [novaAnotacao, ...prev])
+      } else {
+        await loadAnotacoes()
+      }
+      setAnotacaoTexto('')
+      setAnotacoesFeedback('Anotacao salva com sucesso.')
+    } catch (error) {
+      logUiError('dashboard-meta', 'meta-anotacoes-post', error)
+      setAnotacoesError(error.response?.data?.detail || 'Falha ao salvar anotacao.')
+    } finally {
+      setAnotacoesSubmitting(false)
+    }
   }
 
   return (
@@ -556,6 +637,53 @@ export default function MetaDashboardPage() {
           value={filters.date_end}
           onChange={(event) => updateFilter('date_end', event.target.value)}
         />
+      </div>
+
+      <div className="meta-notes-layout">
+        <article className="meta-notes-card">
+          <h3>Nova anotacao</h3>
+          <p className="meta-notes-account">
+            Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
+          </p>
+          <textarea
+            className="meta-notes-input"
+            value={anotacaoTexto}
+            onChange={(event) => setAnotacaoTexto(event.target.value)}
+            placeholder="Escreva uma observacao sobre esta conta..."
+            disabled={!filters.ad_account_id || anotacoesSubmitting}
+          />
+          <div className="meta-notes-actions">
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleSalvarAnotacao}
+              disabled={!filters.ad_account_id || anotacoesSubmitting}
+            >
+              {anotacoesSubmitting ? 'Salvando...' : 'Salvar anotacao'}
+            </button>
+          </div>
+          {anotacoesFeedback ? <p className="hint-ok">{anotacoesFeedback}</p> : null}
+          {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
+        </article>
+        <article className="meta-notes-card">
+          <h3>Anotacoes da conta</h3>
+          {!filters.ad_account_id ? (
+            <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
+          ) : anotacoesLoading ? (
+            <p className="hint-neutral">Carregando anotacoes...</p>
+          ) : anotacoes.length === 0 ? (
+            <p className="hint-neutral">Nenhuma anotacao cadastrada para esta conta.</p>
+          ) : (
+            <div className="meta-notes-list">
+              {anotacoes.map((item) => (
+                <article key={item.id} className="meta-note-item">
+                  <p>{item.observacoes}</p>
+                  <small>{formatDateTime(item.data_criacao)}</small>
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
       </div>
 
       <div className="chart-and-kpis">

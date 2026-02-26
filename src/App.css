@@ -813,6 +813,77 @@
   margin-top: 0.75rem;
 }
 
+.meta-notes-layout {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.meta-notes-card {
+  border: 1px solid #9cb8e2;
+  background: #f9fbff;
+  border-radius: 10px;
+  padding: 0.8rem;
+}
+
+.meta-notes-card h3 {
+  margin: 0;
+  color: #082f6e;
+}
+
+.meta-notes-account {
+  margin: 0.55rem 0 0.45rem;
+  color: #1f4070;
+  font-size: 0.9rem;
+}
+
+.meta-notes-input {
+  width: 100%;
+  min-height: 112px;
+  border: 1px solid #9cb8e2;
+  border-radius: 8px;
+  background: #f6f9ff;
+  color: #0f2950;
+  padding: 0.62rem 0.68rem;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.meta-notes-actions {
+  margin-top: 0.55rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.meta-notes-list {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.55rem;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.meta-note-item {
+  border: 1px solid #c8d8f2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.55rem 0.62rem;
+}
+
+.meta-note-item p {
+  margin: 0;
+  color: #102a4d;
+  white-space: pre-wrap;
+}
+
+.meta-note-item small {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #4b6f9c;
+  font-size: 0.78rem;
+}
+
 .chart-and-kpis {
   margin-top: 1rem;
   display: grid;
@@ -1603,6 +1674,10 @@
   }
 
   .sync-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .meta-notes-layout {
     grid-template-columns: 1fr;
   }
 

@@ -196,7 +196,9 @@ describe('App frontend flows', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: 'Dashboard Meta' })).toBeInTheDocument()
-    expect(await screen.findByText('Conta Principal')).toBeInTheDocument()
+    expect(screen.getByLabelText('Filtro de ad account')).toBeInTheDocument()
+    expect(screen.getByText('Nova anotacao')).toBeInTheDocument()
+    expect(screen.getByText('Anotacoes da conta')).toBeInTheDocument()
     expect(screen.getByText('Serie temporal de insights')).toBeInTheDocument()
     expect(screen.queryByText('Sem dados para os filtros selecionados.')).not.toBeInTheDocument()
     expect(screen.getByText('Gasto Total')).toBeInTheDocument()
