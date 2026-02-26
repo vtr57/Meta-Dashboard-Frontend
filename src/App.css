@@ -660,6 +660,11 @@
   color: #082f6e;
 }
 
+.clientes-table tbody tr.clientes-row-selected td {
+  background: #e8f0ff;
+  color: #082f6e;
+}
+
 .clientes-select-cell {
   width: 44px;
   text-align: center !important;

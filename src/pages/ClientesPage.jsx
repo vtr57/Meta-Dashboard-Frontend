@@ -560,7 +560,7 @@ export function ClientesVisualizarPage() {
                   : null
 
                 return (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={selectedSet.has(row.id) ? 'clientes-row-selected' : ''}>
                     <td className="clientes-select-cell">
                       <input
                         type="checkbox"
