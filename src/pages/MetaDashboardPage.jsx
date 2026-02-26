@@ -641,7 +641,7 @@ export default function MetaDashboardPage() {
 
       <div className="meta-notes-layout">
         <article className="meta-notes-card">
-          <h3>Nova anotacao</h3>
+          <h3>Nova anotação</h3>
           <p className="meta-notes-account">
             Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
           </p>
@@ -666,7 +666,7 @@ export default function MetaDashboardPage() {
           {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
         </article>
         <article className="meta-notes-card">
-          <h3>Anotacoes da conta</h3>
+          <h3>Anotações da conta</h3>
           {!filters.ad_account_id ? (
             <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
           ) : anotacoesLoading ? (
