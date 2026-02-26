@@ -5,6 +5,30 @@ import { formatDate, formatDecimal, formatNumber, logUiError, toInputDate } from
 const FORMA_PAGAMENTO_OPTIONS = ['PIX', 'CARTAO CREDITO']
 const PERIODO_COBRANCA_OPTIONS = ['SEMANAL', 'MENSAL']
 
+function formatSaldoSyncFeedback(saldoSync) {
+  if (!saldoSync || typeof saldoSync !== 'object') return ''
+
+  const updatedClientes = Number(saldoSync.updated_clientes || 0)
+  const totalAdAccounts = Number(saldoSync.total_ad_accounts || 0)
+  const errorCount = Number(saldoSync.error_count || 0)
+  const parseErrorCount = Number(saldoSync.parse_error_count || 0)
+  const totalIssues = errorCount + parseErrorCount
+
+  if (saldoSync.skipped) {
+    const detail = String(saldoSync.detail || '').trim()
+    return detail ? `Sincronizacao de saldo nao executada: ${detail}.` : 'Sincronizacao de saldo nao executada.'
+  }
+
+  const parts = [`Saldo sincronizado para ${formatNumber(updatedClientes)} cliente(s)`]
+  if (totalAdAccounts > 0) {
+    parts.push(`${formatNumber(totalAdAccounts)} conta(s) consultada(s)`)
+  }
+  if (totalIssues > 0) {
+    parts.push(`${formatNumber(totalIssues)} ocorrencia(s) na consulta`)
+  }
+  return `${parts.join(' | ')}.`
+}
+
 export function ClientesCadastrarPage() {
   const [adAccounts, setAdAccounts] = useState([])
   const [name, setName] = useState('')
@@ -267,12 +291,19 @@ export function ClientesVisualizarPage() {
     setErrorMsg('')
     setFeedback('')
     try {
-      const response = await api.get('/api/empresa/clientes')
+      const response = await api.get('/api/empresa/clientes', {
+        params: { refresh_saldo: 1 },
+      })
       const rows = response.data?.clientes || []
+      const saldoSyncFeedback = formatSaldoSyncFeedback(response.data?.saldo_sync)
       setClientes(rows)
       setSelectedIds([])
       setEditingId(null)
-      setFeedback(`Total de clientes encontrados: ${formatNumber(rows.length)}.`)
+      setFeedback(
+        saldoSyncFeedback
+          ? `Total de clientes encontrados: ${formatNumber(rows.length)}. ${saldoSyncFeedback}`
+          : `Total de clientes encontrados: ${formatNumber(rows.length)}.`,
+      )
     } catch (error) {
       logUiError('clientes-visualizar', 'empresa-clientes-get', error)
       setErrorMsg(error.response?.data?.detail || 'Falha ao carregar clientes.')
