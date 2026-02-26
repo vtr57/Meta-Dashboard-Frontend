@@ -94,7 +94,7 @@ function AppLayout({ user, onLogout }) {
     <div className="app-shell">
       <aside className="app-sidebar">
         <div>
-          <h1 className="brand-title">Meta Local Dashboard 9</h1>
+          <h1 className="brand-title">VDashboard</h1>
           <p className="brand-subtitle">Usuario: {user.username}</p>
         </div>
 
