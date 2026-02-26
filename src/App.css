@@ -744,6 +744,21 @@
   margin-top: 0.9rem;
 }
 
+.meta-filter-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.meta-filter-grid > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.meta-filter-grid .searchable-select input,
+.meta-filter-grid input[type='date'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .searchable-select {
   position: relative;
 }

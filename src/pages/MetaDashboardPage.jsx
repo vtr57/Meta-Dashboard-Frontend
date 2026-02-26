@@ -513,7 +513,7 @@ export default function MetaDashboardPage() {
   return (
     <section className="view-card">
       <h2>Dashboard Meta</h2>
-      <div className="filter-grid">
+      <div className="filter-grid meta-filter-grid">
         <SearchableMetaFilter
           value={filters.ad_account_id}
           items={adAccountItems}
@@ -556,11 +556,6 @@ export default function MetaDashboardPage() {
           value={filters.date_end}
           onChange={(event) => updateFilter('date_end', event.target.value)}
         />
-      </div>
-      <div className="filter-actions">
-        <button type="button" className="primary-btn" onClick={loadDashboardData} disabled={dataLoading}>
-          {dataLoading ? 'Atualizando...' : 'Aplicar filtros'}
-        </button>
       </div>
 
       <div className="chart-and-kpis">
