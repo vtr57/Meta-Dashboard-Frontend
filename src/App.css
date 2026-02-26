@@ -832,6 +832,25 @@
   color: #082f6e;
 }
 
+.meta-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.meta-notes-inline-feedback {
+  border: 1px solid #97d6ad;
+  background: #e9f8ee;
+  color: #0f5b2b;
+  border-radius: 999px;
+  padding: 0.18rem 0.58rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .meta-notes-account {
   margin: 0.55rem 0 0.45rem;
   color: #1f4070;
@@ -865,16 +884,52 @@
 }
 
 .meta-note-item {
+  position: relative;
   border: 1px solid #c8d8f2;
   border-radius: 8px;
   background: #ffffff;
-  padding: 0.55rem 0.62rem;
+  padding: 0.55rem 2.4rem 0.55rem 0.62rem;
 }
 
 .meta-note-item p {
   margin: 0;
   color: #102a4d;
   white-space: pre-wrap;
+}
+
+.meta-note-delete-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.42rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid #f1c6c4;
+  border-radius: 999px;
+  background: #fff1f1;
+  color: #8c1d18;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, background-color 160ms ease;
+}
+
+.meta-note-item:hover .meta-note-delete-btn,
+.meta-note-item:focus-within .meta-note-delete-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.meta-note-delete-btn:hover {
+  background: #ffe7e7;
+}
+
+.meta-note-delete-btn:disabled {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: not-allowed;
 }
 
 .meta-note-item small {

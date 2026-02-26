@@ -408,6 +408,7 @@ export default function MetaDashboardPage() {
   const [anotacaoTexto, setAnotacaoTexto] = useState('')
   const [anotacoesLoading, setAnotacoesLoading] = useState(false)
   const [anotacoesSubmitting, setAnotacoesSubmitting] = useState(false)
+  const [anotacaoDeletingId, setAnotacaoDeletingId] = useState(null)
   const [anotacoesError, setAnotacoesError] = useState('')
   const [anotacoesFeedback, setAnotacoesFeedback] = useState('')
   const chartSeries = useMemo(
@@ -582,12 +583,28 @@ export default function MetaDashboardPage() {
         await loadAnotacoes()
       }
       setAnotacaoTexto('')
-      setAnotacoesFeedback('Anotacao salva com sucesso.')
+      setAnotacoesFeedback('Anotação criada com sucesso.')
     } catch (error) {
       logUiError('dashboard-meta', 'meta-anotacoes-post', error)
       setAnotacoesError(error.response?.data?.detail || 'Falha ao salvar anotacao.')
     } finally {
       setAnotacoesSubmitting(false)
+    }
+  }
+
+  const handleExcluirAnotacao = async (anotacaoId) => {
+    if (!anotacaoId) return
+
+    setAnotacaoDeletingId(anotacaoId)
+    setAnotacoesError('')
+    try {
+      await api.delete(`/api/meta/anotacoes/${anotacaoId}`)
+      setAnotacoes((prev) => prev.filter((item) => item.id !== anotacaoId))
+    } catch (error) {
+      logUiError('dashboard-meta', 'meta-anotacoes-delete', error)
+      setAnotacoesError(error.response?.data?.detail || 'Falha ao excluir anotacao.')
+    } finally {
+      setAnotacaoDeletingId(null)
     }
   }
 
@@ -698,7 +715,10 @@ export default function MetaDashboardPage() {
       </div>
       <div className="meta-notes-layout">
         <article className="meta-notes-card">
-          <h3>Nova anotação</h3>
+          <div className="meta-notes-header">
+            <h3>Nova anotação</h3>
+            {anotacoesFeedback ? <span className="meta-notes-inline-feedback">{anotacoesFeedback}</span> : null}
+          </div>
           <p className="meta-notes-account">
             Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
           </p>
@@ -719,7 +739,6 @@ export default function MetaDashboardPage() {
               {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
-          {anotacoesFeedback ? <p className="hint-ok">{anotacoesFeedback}</p> : null}
           {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
         </article>
         <article className="meta-notes-card">
@@ -734,6 +753,19 @@ export default function MetaDashboardPage() {
             <div className="meta-notes-list">
               {anotacoes.map((item) => (
                 <article key={item.id} className="meta-note-item">
+                  <button
+                    type="button"
+                    className="meta-note-delete-btn"
+                    onClick={() => handleExcluirAnotacao(item.id)}
+                    disabled={anotacaoDeletingId === item.id}
+                    aria-label="Excluir anotação"
+                    title="Excluir anotação"
+                  >
+                    <i
+                      className={`fa-solid ${anotacaoDeletingId === item.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}
+                      aria-hidden="true"
+                    />
+                  </button>
                   <p>{item.observacoes}</p>
                   <small>{formatDateTime(item.data_criacao)}</small>
                 </article>
