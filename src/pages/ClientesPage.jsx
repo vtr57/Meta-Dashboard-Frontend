@@ -5,6 +5,27 @@ import { formatDate, formatDecimal, formatNumber, logUiError, toInputDate } from
 const FORMA_PAGAMENTO_OPTIONS = ['PIX', 'CARTAO CREDITO']
 const PERIODO_COBRANCA_OPTIONS = ['SEMANAL', 'MENSAL']
 
+function toLocalDate(value) {
+  const raw = String(value || '').slice(0, 10)
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const parsed = new Date(year, month - 1, day)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed
+}
+
+function isRenovacaoEmMenosDeDoisDias(dataRenovacao) {
+  const renovacao = toLocalDate(dataRenovacao)
+  if (!renovacao) return false
+  const now = new Date()
+  const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diffDays = Math.floor((renovacao.getTime() - hoje.getTime()) / 86400000)
+  return diffDays < 2
+}
+
 function formatSaldoSyncFeedback(saldoSync) {
   if (!saldoSync || typeof saldoSync !== 'object') return ''
 
@@ -618,7 +639,15 @@ export function ClientesVisualizarPage() {
                           required
                         />
                       ) : (
-                        formatDate(row.data_renovacao_creditos)
+                        <span
+                          className={
+                            isRenovacaoEmMenosDeDoisDias(row.data_renovacao_creditos)
+                              ? 'clientes-date-warning'
+                              : ''
+                          }
+                        >
+                          {formatDate(row.data_renovacao_creditos)}
+                        </span>
                       )}
                     </td>
                     <td>

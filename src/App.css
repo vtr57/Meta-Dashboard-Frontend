@@ -665,6 +665,11 @@
   color: #082f6e;
 }
 
+.clientes-date-warning {
+  color: #b42318;
+  font-weight: 700;
+}
+
 .clientes-select-cell {
   width: 44px;
   text-align: center !important;
