@@ -103,19 +103,28 @@ function AppLayout({ user, onLogout }) {
             to="/app/conexao"
             className={({ isActive }) => (isActive ? 'sidebar-link active' : 'sidebar-link')}
           >
-            Conexao / Sincronizacao
+            <span className="sidebar-link-content">
+              <i className="fa-solid fa-link sidebar-link-icon" aria-hidden="true" />
+              <span>Conexao / Sincronizacao</span>
+            </span>
           </NavLink>
           <NavLink
             to="/app/dashboard-meta"
             className={({ isActive }) => (isActive ? 'sidebar-link active' : 'sidebar-link')}
           >
-            Dashboard Meta
+            <span className="sidebar-link-content">
+              <i className="fa-solid fa-chart-column sidebar-link-icon" aria-hidden="true" />
+              <span>Dashboard Meta</span>
+            </span>
           </NavLink>
           <NavLink
             to="/app/dashboard-instagram"
             className={({ isActive }) => (isActive ? 'sidebar-link active' : 'sidebar-link')}
           >
-            Dashboard Instagram
+            <span className="sidebar-link-content">
+              <i className="fa-brands fa-instagram sidebar-link-icon" aria-hidden="true" />
+              <span>Dashboard Instagram</span>
+            </span>
           </NavLink>
           <div className="sidebar-group">
             <button
@@ -127,7 +136,10 @@ function AppLayout({ user, onLogout }) {
               aria-expanded={clientesMenuOpen}
               aria-controls="clientes-submenu"
             >
-              Clientes
+              <span className="sidebar-link-content">
+                <i className="fa-solid fa-users sidebar-link-icon" aria-hidden="true" />
+                <span>Clientes</span>
+              </span>
               <span className="sidebar-toggle-icon">{clientesMenuOpen ? '▾' : '▸'}</span>
             </button>
             {clientesMenuOpen ? (
@@ -136,13 +148,19 @@ function AppLayout({ user, onLogout }) {
                   to="/app/clientes/cadastrar"
                   className={({ isActive }) => (isActive ? 'sidebar-sublink active' : 'sidebar-sublink')}
                 >
-                  Cadastrar
+                  <span className="sidebar-link-content">
+                    <i className="fa-solid fa-user-plus sidebar-link-icon" aria-hidden="true" />
+                    <span>Cadastrar</span>
+                  </span>
                 </NavLink>
                 <NavLink
                   to="/app/clientes/visualizar"
                   className={({ isActive }) => (isActive ? 'sidebar-sublink active' : 'sidebar-sublink')}
                 >
-                  Visualizar
+                  <span className="sidebar-link-content">
+                    <i className="fa-solid fa-eye sidebar-link-icon" aria-hidden="true" />
+                    <span>Visualizar</span>
+                  </span>
                 </NavLink>
               </div>
             ) : null}
