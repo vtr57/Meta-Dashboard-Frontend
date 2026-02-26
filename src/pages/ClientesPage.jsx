@@ -818,7 +818,6 @@ export function ClientesVisualizarPage() {
 
       <div className="clientes-actions-toolbar">
         <div className="clientes-actions-group">
-          <span className="clientes-actions-label">Acoes de filtro</span>
           <button type="button" className="primary-btn" onClick={handleVerTodos} disabled={isBusy}>
             {loading ? 'Atualizando...' : 'Ver todos'}
           </button>
@@ -833,7 +832,6 @@ export function ClientesVisualizarPage() {
           {showOnlySelected ? <span className="clientes-chip">Filtro ativo: selecionados</span> : null}
         </div>
         <div className="clientes-actions-group clientes-actions-danger">
-          <span className="clientes-actions-label">Acoes perigosas</span>
           <button
             type="button"
             className="table-action-btn table-action-btn-secondary"
