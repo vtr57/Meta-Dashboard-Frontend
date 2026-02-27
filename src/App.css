@@ -115,15 +115,34 @@
   gap: 1rem;
 }
 
+.brand-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
 .brand-title {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.3rem;
   line-height: 1.35;
+}
+
+.brand-title-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.brand-title-logo {
+  width: 1.3rem;
+  height: 1.3rem;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brand-subtitle {
   margin: 0.5rem 0 0;
-  font-size: 0.9rem;
+  font-size: 1.02rem;
   color: #d2e1fa;
 }
 

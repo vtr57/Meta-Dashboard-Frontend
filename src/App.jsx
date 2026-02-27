@@ -33,14 +33,14 @@ function LoginPage({ onLogin }) {
     <main className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <h1>Entrar</h1>
-        <p className="login-subtitle">Use seu usuario e senha do sistema.</p>
+        <p className="login-subtitle">Use seu usuário e senha do sistema.</p>
         <p className="login-privacy-link">
           <a href="/politica-de-privacidade">Politica de Privacidade</a>
           {' | '}
           <a href="/exclusao-de-dados">Exclusao de Dados</a>
         </p>
 
-        <label htmlFor="username">Usuario</label>
+        <label htmlFor="username">Usuário</label>
         <input
           id="username"
           name="username"
@@ -93,10 +93,15 @@ function AppLayout({ user, onLogout }) {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <div>
-          <h1 className="brand-title">VDashboard</h1>
-          <p className="brand-subtitle">Usuario: {user.username}</p>
-        </div>
+        <NavLink to="/app/conexao" className="brand-link">
+          <h1 className="brand-title">
+            <span className="brand-title-content">
+              <img src="/VDashboard.png" alt="" className="brand-title-logo" aria-hidden="true" />
+              <span>VDashboard</span>
+            </span>
+          </h1>
+          <p className="brand-subtitle">Usuário: {user.username}</p>
+        </NavLink>
 
         <nav className="sidebar-nav">
           <NavLink
