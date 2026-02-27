@@ -63,14 +63,14 @@ const SYNC_STAGE_DEFINITIONS = {
   facebook_page: {
     id: 'facebook_page',
     label: 'Facebook Page',
-    icon: 'fa-facebook',
+    icon: 'fa-flag',
     entities: ['facebook_pages'],
     messageTokens: ['paginas sincronizadas'],
   },
   instagram_account: {
     id: 'instagram_account',
     label: 'Instagram Account',
-    icon: 'fa-instagram',
+    icon: 'fa-camera',
     entities: ['instagram_accounts'],
     messageTokens: ['instagram_accounts_upserted'],
   },
