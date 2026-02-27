@@ -5,12 +5,140 @@ import { formatLogTime, logUiError, resolveLogStatus } from './pageUtils'
 const FACEBOOK_OAUTH_MESSAGE_TYPE = 'facebook_oauth_result'
 const LAST_SYNC_AT_STORAGE_KEY = 'meta_last_sync_at'
 const ESTIMATED_SYNC_TIME_TEXT = '30 a 90 segundos'
-const SYNC_STAGES = [
-  { id: 'api', label: 'Conectando a API', icon: 'fa-plug' },
-  { id: 'accounts', label: 'Buscando contas', icon: 'fa-users-viewfinder' },
-  { id: 'extract', label: 'Extraindo campanhas e insights', icon: 'fa-chart-line' },
-  { id: 'save', label: 'Salvando dados', icon: 'fa-database' },
-]
+const SYNC_SCOPE_ALL = 'all'
+const SYNC_SCOPE_META = 'meta'
+const SYNC_SCOPE_INSTAGRAM = 'instagram'
+const SYNC_STAGE_IDS_BY_SCOPE = {
+  [SYNC_SCOPE_ALL]: [
+    'ad_account',
+    'campaign',
+    'adset',
+    'ad',
+    'ad_insights',
+    'facebook_page',
+    'instagram_account',
+    'instagram_insights',
+    'media',
+    'media_insights',
+  ],
+  [SYNC_SCOPE_META]: ['ad_account', 'campaign', 'adset', 'ad', 'ad_insights'],
+  [SYNC_SCOPE_INSTAGRAM]: ['facebook_page', 'instagram_account', 'instagram_insights', 'media', 'media_insights'],
+}
+const SYNC_STAGE_DEFINITIONS = {
+  ad_account: {
+    id: 'ad_account',
+    label: 'Ad Account',
+    icon: 'fa-users-viewfinder',
+    entities: ['ad_accounts'],
+    messageTokens: ['ad_accounts_upserted'],
+  },
+  campaign: {
+    id: 'campaign',
+    label: 'Campaign',
+    icon: 'fa-bullhorn',
+    entities: ['campaigns', 'campaigns_batch'],
+    messageTokens: ['campaigns_upserted'],
+  },
+  adset: {
+    id: 'adset',
+    label: 'AdSet',
+    icon: 'fa-layer-group',
+    entities: ['adsets', 'adsets_batch'],
+    messageTokens: ['adsets_upserted'],
+  },
+  ad: {
+    id: 'ad',
+    label: 'Ad',
+    icon: 'fa-rectangle-ad',
+    entities: ['ads', 'ads_batch'],
+    messageTokens: ['ads_upserted'],
+  },
+  ad_insights: {
+    id: 'ad_insights',
+    label: 'Ad Insights',
+    icon: 'fa-chart-line',
+    entities: ['ad_insights'],
+    messageTokens: ['ad_insight_upserts', 'ad_insight_rows_seen'],
+  },
+  facebook_page: {
+    id: 'facebook_page',
+    label: 'Facebook Page',
+    icon: 'fa-facebook',
+    entities: ['facebook_pages'],
+    messageTokens: ['paginas sincronizadas'],
+  },
+  instagram_account: {
+    id: 'instagram_account',
+    label: 'Instagram Account',
+    icon: 'fa-instagram',
+    entities: ['instagram_accounts'],
+    messageTokens: ['instagram_accounts_upserted'],
+  },
+  instagram_insights: {
+    id: 'instagram_insights',
+    label: 'Instagram Insights',
+    icon: 'fa-chart-column',
+    entities: ['instagram_account_insights'],
+    messageTokens: ['instagram_accounts_with_insights'],
+  },
+  media: {
+    id: 'media',
+    label: 'Media',
+    icon: 'fa-photo-film',
+    entities: ['instagram_media'],
+    messageTokens: ['media_upserts'],
+  },
+  media_insights: {
+    id: 'media_insights',
+    label: 'Media Insights',
+    icon: 'fa-magnifying-glass-chart',
+    entities: ['instagram_media_insights'],
+    entityPrefixes: ['instagram_media_insights_'],
+    messageTokens: ['media_insight_updates'],
+  },
+}
+
+function normalizeSyncText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+function inferSyncScopeFromEndpoint(endpoint) {
+  if (endpoint === '/api/meta/sync/start/meta') return SYNC_SCOPE_META
+  if (endpoint === '/api/meta/sync/start/instagram') return SYNC_SCOPE_INSTAGRAM
+  return SYNC_SCOPE_ALL
+}
+
+function resolveStageIdsByScope(scope) {
+  if (scope === SYNC_SCOPE_META) return SYNC_STAGE_IDS_BY_SCOPE[SYNC_SCOPE_META]
+  if (scope === SYNC_SCOPE_INSTAGRAM) return SYNC_STAGE_IDS_BY_SCOPE[SYNC_SCOPE_INSTAGRAM]
+  return SYNC_STAGE_IDS_BY_SCOPE[SYNC_SCOPE_ALL]
+}
+
+function isStageSignaled(stage, entity, message) {
+  if (stage.entities?.includes(entity)) return true
+  if ((stage.entityPrefixes || []).some((prefix) => entity.startsWith(prefix))) return true
+  if ((stage.messageTokens || []).some((token) => message.includes(token))) return true
+  return false
+}
+
+function resolveExtractedStageIds(logs) {
+  const extracted = new Set()
+  for (const row of logs) {
+    const entity = normalizeSyncText(row.entidade)
+    const message = normalizeSyncText(row.mensagem)
+    for (const stageId of Object.keys(SYNC_STAGE_DEFINITIONS)) {
+      const stage = SYNC_STAGE_DEFINITIONS[stageId]
+      if (isStageSignaled(stage, entity, message)) {
+        extracted.add(stage.id)
+      }
+    }
+  }
+  return extracted
+}
 
 function getStoredLastSyncAt() {
   try {
@@ -38,49 +166,40 @@ function formatSyncStatusLabel(status) {
   return 'Pronta'
 }
 
-function getStageMetaFromLogs(logs) {
-  const textBlob = logs
-    .map((row) => `${row.entidade || ''} ${row.mensagem || ''}`.toLowerCase())
-    .join(' | ')
-
-  return {
-    api: logs.length > 0,
-    accounts: /(adaccount|ad account|account|conta)/.test(textBlob),
-    extract: /(campanh|adset|anuncio|instagram|insight|media)/.test(textBlob),
-    save: /(salv|upsert|persist|conclu|finaliz|success)/.test(textBlob),
-  }
-}
-
 function buildSyncStageState(syncRun, logs) {
+  const stageIds = resolveStageIdsByScope(syncRun?.sync_scope)
+  const scopedStages = stageIds.map((stageId) => SYNC_STAGE_DEFINITIONS[stageId])
+
   if (!syncRun) {
     return {
       progress: 0,
-      stages: SYNC_STAGES.map((stage) => ({ ...stage, status: 'pending' })),
+      stages: scopedStages.map((stage) => ({ ...stage, status: 'pending' })),
     }
   }
 
-  const stageMeta = getStageMetaFromLogs(logs)
+  const extractedStageIds = resolveExtractedStageIds(logs)
   const allDone = syncRun.status === 'success'
-  const doneCount = allDone ? SYNC_STAGES.length : SYNC_STAGES.filter((stage) => stageMeta[stage.id]).length
-  const firstPendingIndex = SYNC_STAGES.findIndex((stage) => !stageMeta[stage.id])
+  const totalStages = scopedStages.length || 1
+  const doneCount = allDone ? totalStages : stageIds.filter((stageId) => extractedStageIds.has(stageId)).length
+  const firstPendingIndex = stageIds.findIndex((stageId) => !extractedStageIds.has(stageId))
 
   let progress = 0
   if (syncRun.status === 'success') {
     progress = 100
   } else if (syncRun.status === 'failed') {
-    progress = Math.max(10, doneCount * 25)
+    progress = Math.max(8, Math.round((doneCount / totalStages) * 100))
   } else {
-    progress = Math.min(95, Math.max(12, doneCount * 25 + 12))
+    progress = Math.min(95, Math.round((doneCount / totalStages) * 100))
   }
 
-  const stages = SYNC_STAGES.map((stage, index) => {
-    if (allDone || stageMeta[stage.id]) {
+  const stages = scopedStages.map((stage, index) => {
+    if (allDone || extractedStageIds.has(stage.id)) {
       return { ...stage, status: 'done' }
     }
     if (syncRun.status === 'failed' && index === (firstPendingIndex === -1 ? 0 : firstPendingIndex)) {
       return { ...stage, status: 'failed' }
     }
-    if (!syncRun.is_finished && index === (firstPendingIndex === -1 ? SYNC_STAGES.length - 1 : firstPendingIndex)) {
+    if (!syncRun.is_finished && index === (firstPendingIndex === -1 ? scopedStages.length - 1 : firstPendingIndex)) {
       return { ...stage, status: 'active' }
     }
     return { ...stage, status: 'pending' }
@@ -229,11 +348,13 @@ export default function ConnectionPage() {
       const response = await api.post(endpoint)
       const runId = response.data?.sync_run_id
       if (runId) {
+        const syncScope = response.data?.sync_scope || inferSyncScopeFromEndpoint(endpoint)
         setLogs([])
         setSyncRun({
           id: runId,
           status: response.data?.status || 'pending',
           is_finished: false,
+          sync_scope: syncScope,
         })
         setFeedback(feedbackMessage)
       }
@@ -288,11 +409,12 @@ export default function ConnectionPage() {
         sinceId = payload.next_since_id || sinceId
         const run = payload.sync_run || {}
         const finished = !!run.is_finished
-        setSyncRun({
-          id: syncRun.id,
-          status: run.status || syncRun.status,
+        setSyncRun((prev) => ({
+          id: prev?.id || syncRun.id,
+          status: run.status || prev?.status || syncRun.status,
           is_finished: finished,
-        })
+          sync_scope: prev?.sync_scope || syncRun.sync_scope || null,
+        }))
         if (!finished && !canceled) {
           timer = window.setTimeout(poll, 2000)
         } else if (finished) {
