@@ -12,6 +12,68 @@ import {
   toInputDate,
 } from './pageUtils'
 
+const META_SYNC_STAGE_ORDER = [
+  'ad accounts',
+  'campaigns',
+  'adsets',
+  'ads',
+  'ad insights (somente anuncio)',
+  'facebook pages',
+  'instagram business + insights da conta',
+  'midias + insights das midias',
+]
+
+function normalizeSyncText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+function formatSyncStatusLabel(status) {
+  if (status === 'running') return 'Em andamento'
+  if (status === 'success') return 'Concluida'
+  if (status === 'failed') return 'Falhou'
+  if (status === 'pending') return 'Na fila'
+  return 'Pronta'
+}
+
+function computeMetaSyncProgress(syncRun, logs) {
+  if (!syncRun) return 0
+  if (syncRun.status === 'success') return 100
+
+  const normalizedMessages = (logs || []).map((row) => normalizeSyncText(row.mensagem))
+  let completedStages = 0
+  let activeStageCount = 0
+
+  for (const stageName of META_SYNC_STAGE_ORDER) {
+    const stageStartMarker = `[${stageName}] inicio`
+    const stageDoneMarker = `[${stageName}] concluido`
+    const stageDone = normalizedMessages.some((message) => message.includes(stageDoneMarker))
+    if (stageDone) {
+      completedStages += 1
+      continue
+    }
+    const stageStarted = normalizedMessages.some((message) => message.includes(stageStartMarker))
+    if (stageStarted) {
+      activeStageCount += 1
+    }
+  }
+
+  const totalStages = META_SYNC_STAGE_ORDER.length
+  if (syncRun.status === 'failed') {
+    return Math.max(8, Math.round((completedStages / totalStages) * 100))
+  }
+  if (completedStages === 0 && activeStageCount === 0) {
+    return logs.length > 0 ? 8 : 0
+  }
+
+  const partialStage = Math.min(activeStageCount, 1) * 0.5
+  const rawProgress = ((completedStages + partialStage) / totalStages) * 100
+  return Math.min(95, Math.max(8, Math.round(rawProgress)))
+}
+
 function MetaTimeseriesChart({ series }) {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
@@ -411,6 +473,11 @@ export default function MetaDashboardPage() {
   const [anotacaoDeletingId, setAnotacaoDeletingId] = useState(null)
   const [anotacoesError, setAnotacoesError] = useState('')
   const [anotacoesFeedback, setAnotacoesFeedback] = useState('')
+  const [sync1dRun, setSync1dRun] = useState(null)
+  const [sync1dLogs, setSync1dLogs] = useState([])
+  const [sync1dStarting, setSync1dStarting] = useState(false)
+  const [sync1dError, setSync1dError] = useState('')
+  const [sync1dFeedback, setSync1dFeedback] = useState('')
   const chartSeries = useMemo(
     () => normalizeSeriesToDateRange(series, filters.date_start, filters.date_end),
     [series, filters.date_start, filters.date_end],
@@ -431,6 +498,9 @@ export default function MetaDashboardPage() {
     }
     return gastoTotal / resultadosTotais
   }, [kpis?.gasto_total, resultadosTotais])
+  const sync1dProgress = useMemo(() => computeMetaSyncProgress(sync1dRun, sync1dLogs), [sync1dRun, sync1dLogs])
+  const sync1dInProgress = !!sync1dRun && !sync1dRun.is_finished
+  const sync1dStatusLabel = formatSyncStatusLabel(sync1dRun?.status)
   const adAccountItems = useMemo(
     () => toSearchableItems(options.ad_accounts, 'id_meta_ad_account'),
     [options.ad_accounts],
@@ -526,6 +596,17 @@ export default function MetaDashboardPage() {
     }
   }, [filters.ad_account_id])
 
+  const loadFiltersRef = useRef(loadFilters)
+  const loadDashboardDataRef = useRef(loadDashboardData)
+
+  useEffect(() => {
+    loadFiltersRef.current = loadFilters
+  }, [loadFilters])
+
+  useEffect(() => {
+    loadDashboardDataRef.current = loadDashboardData
+  }, [loadDashboardData])
+
   useEffect(() => {
     loadFilters()
   }, [loadFilters])
@@ -537,6 +618,88 @@ export default function MetaDashboardPage() {
   useEffect(() => {
     loadAnotacoes()
   }, [loadAnotacoes])
+
+  useEffect(() => {
+    if (!sync1dRun?.id || sync1dRun?.is_finished) return undefined
+
+    let canceled = false
+    let timer
+    let sinceId = 0
+
+    const poll = async () => {
+      try {
+        const response = await api.get(`/api/meta/sync/${sync1dRun.id}/logs`, {
+          params: { since_id: sinceId },
+        })
+        const payload = response.data || {}
+        const incomingLogs = payload.logs || []
+        if (incomingLogs.length > 0) {
+          setSync1dLogs((prev) => [...prev, ...incomingLogs])
+          sinceId = payload.next_since_id || sinceId
+        }
+
+        const run = payload.sync_run || {}
+        const finished = !!run.is_finished
+        setSync1dRun((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            status: run.status || prev.status,
+            is_finished: finished,
+          }
+        })
+
+        if (!finished && !canceled) {
+          timer = window.setTimeout(poll, 2000)
+        } else if (finished) {
+          if (run.status === 'success') {
+            setSync1dFeedback('Sincronização total de 1 dia concluída.')
+            await Promise.allSettled([loadDashboardDataRef.current(), loadFiltersRef.current()])
+          } else {
+            setSync1dError('Sincronização total de 1 dia finalizou com erro.')
+          }
+        }
+      } catch (error) {
+        logUiError('dashboard-meta', 'meta-sync-1d-logs', error)
+        if (!canceled) {
+          timer = window.setTimeout(poll, 2000)
+        }
+      }
+    }
+
+    poll()
+    return () => {
+      canceled = true
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [sync1dRun?.id, sync1dRun?.is_finished])
+
+  const handleSyncTotal1d = async () => {
+    if (sync1dInProgress) return
+    setSync1dStarting(true)
+    setSync1dError('')
+    setSync1dFeedback('')
+    setSync1dLogs([])
+    try {
+      const response = await api.post('/api/meta/sync/start/insights-1d')
+      const syncRunId = response.data?.sync_run_id
+      if (!syncRunId) {
+        setSync1dError('Não foi possível iniciar a sincronização de 1 dia.')
+        return
+      }
+      setSync1dRun({
+        id: syncRunId,
+        status: response.data?.status || 'pending',
+        is_finished: false,
+      })
+      setSync1dFeedback('Sincronização total de 1 dia iniciada.')
+    } catch (error) {
+      logUiError('dashboard-meta', 'meta-sync-1d-start', error)
+      setSync1dError(error.response?.data?.detail || 'Falha ao iniciar sincronização de 1 dia.')
+    } finally {
+      setSync1dStarting(false)
+    }
+  }
 
   const updateFilter = (field, value) => {
     if (field === 'ad_account_id') {
@@ -680,6 +843,35 @@ export default function MetaDashboardPage() {
 
         <article className="kpis-card">
           <h3>KPIs</h3>
+          <div className="meta-sync-1d-panel">
+            <div className="meta-sync-1d-header">
+              <button
+                type="button"
+                className="primary-btn meta-sync-1d-btn"
+                onClick={handleSyncTotal1d}
+                disabled={sync1dStarting || sync1dInProgress}
+              >
+                <i className={`fa-solid ${sync1dInProgress ? 'fa-spinner fa-spin' : 'fa-rotate'}`} aria-hidden="true" />{' '}
+                {sync1dInProgress ? 'Sincronizando 1 dia...' : 'Sincronizar Total (1 dia)'}
+              </button>
+              {sync1dRun ? (
+                <span className={`sync-status-badge status-${sync1dRun.status || 'idle'}`}>{sync1dStatusLabel}</span>
+              ) : null}
+            </div>
+            <div
+              className="sync-progress-track meta-sync-1d-track"
+              role="progressbar"
+              aria-label="Progresso da sincronização total de 1 dia"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(sync1dProgress)}
+            >
+              <div className="sync-progress-fill" style={{ width: `${sync1dProgress}%` }} />
+            </div>
+            <p className="sync-progress-value meta-sync-1d-value">{Math.round(sync1dProgress)}% concluído</p>
+            {sync1dFeedback ? <p className="hint-ok meta-sync-1d-feedback">{sync1dFeedback}</p> : null}
+            {sync1dError ? <p className="hint-error meta-sync-1d-feedback">{sync1dError}</p> : null}
+          </div>
           <div className="kpi-grid">
             <article className="kpi-tile">
               <p className="kpi-label">Gasto Total</p>

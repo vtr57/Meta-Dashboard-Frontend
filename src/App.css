@@ -1056,6 +1056,40 @@
   gap: 0.6rem;
 }
 
+.meta-sync-1d-panel {
+  margin-bottom: 0.7rem;
+  border: 1px solid #b9cdef;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 0.65rem;
+}
+
+.meta-sync-1d-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.meta-sync-1d-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.meta-sync-1d-track {
+  margin-top: 0.58rem;
+}
+
+.meta-sync-1d-value {
+  margin-top: 0.4rem;
+}
+
+.meta-sync-1d-feedback {
+  margin-top: 0.5rem;
+}
+
 .kpi-tile {
   background: #edf2f3;
   border: 1px solid #bfd0d4;
