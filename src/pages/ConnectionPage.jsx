@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import api from '../lib/api'
-import { formatLogTime, logUiError, resolveLogStatus } from './pageUtils'
+import { logUiError } from './pageUtils'
 
 const FACEBOOK_OAUTH_MESSAGE_TYPE = 'facebook_oauth_result'
 const LAST_SYNC_AT_STORAGE_KEY = 'meta_last_sync_at'
@@ -570,30 +570,6 @@ export default function ConnectionPage() {
         </div>
 
         <div className="connection-column-side">
-          <article className="connection-card connection-logs-card">
-            <div className="connection-card-title">
-              <h3>
-                <i className="fa-solid fa-terminal" aria-hidden="true" /> Logs da sincronização
-              </h3>
-              {syncRun ? <span className={`sync-status-badge ${syncStatusClass}`}>{syncStatusLabel}</span> : null}
-            </div>
-            <div className="logs-box connection-logs-box">
-              {logs.length === 0 ? (
-                <p className="connection-log-empty">
-                  <i className="fa-regular fa-hourglass-half" aria-hidden="true" /> Aguardando inicio da sincronizacao...
-                </p>
-              ) : (
-                logs.map((log) => {
-                  const logStatus = resolveLogStatus(log)
-                  return (
-                    <p key={log.id}>
-                      [{formatLogTime(log.timestamp)}] [{log.entidade}] [{logStatus}] {log.mensagem}
-                    </p>
-                  )
-                })
-              )}
-            </div>
-          </article>
           <article className="connection-card">
             <h3>
               <i className="fa-solid fa-list-check" aria-hidden="true" /> Progresso da sincronização
