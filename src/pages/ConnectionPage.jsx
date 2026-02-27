@@ -458,7 +458,7 @@ export default function ConnectionPage() {
           <i className="fa-solid fa-link" aria-hidden="true" /> Conexão / Sincronização
         </h2>
         <p className="view-description">
-          Passo 1: conectar conta. Passo 2: sincronizar dados. Passo 3: acompanhar logs em tempo real.
+          Passo 1: conectar conta. Passo 2: sincronizar dados. Passo 3: acompanhar barra de progresso em tempo real.
         </p>
       </header>
 
