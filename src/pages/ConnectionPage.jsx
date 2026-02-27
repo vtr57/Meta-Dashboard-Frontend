@@ -474,7 +474,7 @@ export default function ConnectionPage() {
           </article>
           <article className="connection-card">
             <h3>
-              <i className="fa-solid fa-list-check" aria-hidden="true" /> Progresso da sincronizacao
+              <i className="fa-solid fa-list-check" aria-hidden="true" /> Progresso da sincronização
             </h3>
             <div className="sync-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
               <div className="sync-progress-fill" style={{ width: `${progress}%` }} />
