@@ -424,6 +424,13 @@ export default function MetaDashboardPage() {
       }, 0),
     [series],
   )
+  const cpr = useMemo(() => {
+    const gastoTotal = Number(kpis?.gasto_total || 0)
+    if (!Number.isFinite(gastoTotal) || resultadosTotais <= 0) {
+      return null
+    }
+    return gastoTotal / resultadosTotais
+  }, [kpis?.gasto_total, resultadosTotais])
   const adAccountItems = useMemo(
     () => toSearchableItems(options.ad_accounts, 'id_meta_ad_account'),
     [options.ad_accounts],
@@ -689,6 +696,10 @@ export default function MetaDashboardPage() {
             <article className="kpi-tile">
               <p className="kpi-label">Resultados Totais</p>
               <p className="kpi-value">{formatNumber(resultadosTotais)}</p>
+            </article>
+            <article className="kpi-tile">
+              <p className="kpi-label">CPR</p>
+              <p className="kpi-value">{cpr === null ? 'N/A' : formatCurrency(cpr)}</p>
             </article>
             <article className="kpi-tile">
               <p className="kpi-label">CTR Médio</p>
