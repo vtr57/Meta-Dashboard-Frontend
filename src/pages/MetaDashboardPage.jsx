@@ -12,7 +12,7 @@ import {
   toInputDate,
 } from './pageUtils'
 
-const META_SYNC_STAGE_ORDER = [
+const META_SYNC_STAGE_ORDER_ALL = [
   'ad accounts',
   'campaigns',
   'adsets',
@@ -21,6 +21,14 @@ const META_SYNC_STAGE_ORDER = [
   'facebook pages',
   'instagram business + insights da conta',
   'midias + insights das midias',
+]
+
+const META_SYNC_STAGE_ORDER_META = [
+  'ad accounts',
+  'campaigns',
+  'adsets',
+  'ads',
+  'ad insights (somente anuncio)',
 ]
 
 function normalizeSyncText(value) {
@@ -39,15 +47,23 @@ function formatSyncStatusLabel(status) {
   return 'Pronta'
 }
 
+function getMetaSyncStageOrder(syncScope) {
+  if (String(syncScope || '').toLowerCase() === 'meta') {
+    return META_SYNC_STAGE_ORDER_META
+  }
+  return META_SYNC_STAGE_ORDER_ALL
+}
+
 function computeMetaSyncProgress(syncRun, logs) {
   if (!syncRun) return 0
   if (syncRun.status === 'success') return 100
 
+  const stageOrder = getMetaSyncStageOrder(syncRun.sync_scope)
   const normalizedMessages = (logs || []).map((row) => normalizeSyncText(row.mensagem))
   let completedStages = 0
   let activeStageCount = 0
 
-  for (const stageName of META_SYNC_STAGE_ORDER) {
+  for (const stageName of stageOrder) {
     const stageStartMarker = `[${stageName}] inicio`
     const stageDoneMarker = `[${stageName}] concluido`
     const stageDone = normalizedMessages.some((message) => message.includes(stageDoneMarker))
@@ -61,7 +77,7 @@ function computeMetaSyncProgress(syncRun, logs) {
     }
   }
 
-  const totalStages = META_SYNC_STAGE_ORDER.length
+  const totalStages = stageOrder.length
   if (syncRun.status === 'failed') {
     return Math.max(8, Math.round((completedStages / totalStages) * 100))
   }
@@ -690,6 +706,7 @@ export default function MetaDashboardPage() {
       setSync1dRun({
         id: syncRunId,
         status: response.data?.status || 'pending',
+        sync_scope: response.data?.sync_scope || 'all',
         is_finished: false,
       })
       setSync1dFeedback('Sincronização total de 1 dia iniciada.')
