@@ -243,24 +243,15 @@ function MetaSpendTimeseriesChart({ chartModel }) {
 export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorMsg, dateStart, dateEnd }) {
   const [ordering, setOrdering] = useState('-spend')
   const [selectedAdIds, setSelectedAdIds] = useState([])
-  const [hasCustomSelection, setHasCustomSelection] = useState(false)
-
-  const availableAdIds = useMemo(() => rows.map((row) => row?.ad_id).filter(Boolean), [rows])
-  const effectiveSelectedAdIds = hasCustomSelection ? selectedAdIds : availableAdIds
 
   useEffect(() => {
-    setSelectedAdIds((current) => {
-      const nextSelected = current.filter((adId) => availableAdIds.includes(adId))
-      if (nextSelected.length > 0 || availableAdIds.length === 0) {
-        return nextSelected
-      }
-      return availableAdIds
-    })
-  }, [availableAdIds])
+    const availableAdIds = rows.map((row) => row?.ad_id).filter(Boolean)
+    setSelectedAdIds((current) => current.filter((adId) => availableAdIds.includes(adId)))
+  }, [rows])
 
   const chartModel = useMemo(
-    () => buildChartModel(seriesByAd, dateStart, dateEnd, effectiveSelectedAdIds),
-    [dateEnd, dateStart, effectiveSelectedAdIds, seriesByAd],
+    () => buildChartModel(seriesByAd, dateStart, dateEnd, selectedAdIds),
+    [dateEnd, dateStart, selectedAdIds, seriesByAd],
   )
   const sortedRows = useMemo(() => {
     const currentField = ordering.startsWith('-') ? ordering.slice(1) : ordering
@@ -307,12 +298,8 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
 
   const toggleAdSelection = (adId) => {
     if (!adId) return
-    const currentSelection = hasCustomSelection ? selectedAdIds : availableAdIds
-    setHasCustomSelection(true)
     setSelectedAdIds(
-      currentSelection.includes(adId)
-        ? currentSelection.filter((item) => item !== adId)
-        : [...currentSelection, adId],
+      selectedAdIds.includes(adId) ? selectedAdIds.filter((item) => item !== adId) : [...selectedAdIds, adId],
     )
   }
 
@@ -330,7 +317,7 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
               <div className="axis-text">Cada serie depende dos anuncios selecionados.</div>
               <div className="axis-text">Eixo esquerdo: gasto, eixo direito: resultados.</div>
             </div>
-          ) : effectiveSelectedAdIds.length === 0 || chartModel.datasets.length === 0 ? (
+          ) : selectedAdIds.length === 0 || chartModel.datasets.length === 0 ? (
             <div className="chart-placeholder">
               <div className="axis-text">Selecione um ou mais anúncios para exibir o gráfico.</div>
               <div className="axis-text">Eixo esquerdo: gasto, eixo direito: resultados.</div>
@@ -348,15 +335,15 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
             </span>
           </div>
           <p className="hint-neutral meta-specific-row-selection-help">
-            Use o botão de cada linha para exibir ou ocultar o anuncio no gráfico.
+            Marque a caixinha de cada linha para exibir ou ocultar o anuncio no gráfico.
           </p>
           {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
           <div className="table-wrapper meta-specific-table-wrapper">
             <table className="media-table meta-specific-table">
               <thead>
                 <tr>
+                  <th className="meta-specific-checkbox-col">Gráfico</th>
                   <th>Anúncio</th>
-                  <th>Gráfico</th>
                   <th>
                     <button type="button" className="th-sort-btn" onClick={() => toggleOrdering('results')}>
                       Resultados <span>{sortIndicator('results')}</span>
@@ -386,17 +373,16 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
                 ) : (
                   sortedRows.map((row) => (
                     <tr key={row.ad_id}>
-                      <td>{row.ad_name || row.ad_id}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className={`meta-specific-row-toggle ${effectiveSelectedAdIds.includes(row.ad_id) ? 'is-selected' : ''}`}
-                          aria-pressed={effectiveSelectedAdIds.includes(row.ad_id)}
-                          onClick={() => toggleAdSelection(row.ad_id)}
-                        >
-                          {effectiveSelectedAdIds.includes(row.ad_id) ? 'Ocultar' : 'Exibir'}
-                        </button>
+                      <td className="meta-specific-checkbox-col">
+                        <input
+                          type="checkbox"
+                          className="meta-specific-row-checkbox"
+                          checked={selectedAdIds.includes(row.ad_id)}
+                          onChange={() => toggleAdSelection(row.ad_id)}
+                          aria-label={`Exibir ${row.ad_name || row.ad_id} no gráfico`}
+                        />
                       </td>
+                      <td>{row.ad_name || row.ad_id}</td>
                       <td>{formatNumber(row.results)}</td>
                       <td>{formatCurrency(row.spend)}</td>
                       <td>{formatSpecificCpr(row.cpr)}</td>
