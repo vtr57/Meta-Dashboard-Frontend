@@ -242,22 +242,25 @@ function MetaSpendTimeseriesChart({ chartModel }) {
 
 export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorMsg, dateStart, dateEnd }) {
   const [ordering, setOrdering] = useState('-spend')
-  const [selectedAdIds, setSelectedAdIds] = useState(() => rows.map((row) => row?.ad_id).filter(Boolean))
+  const [selectedAdIds, setSelectedAdIds] = useState([])
+  const [hasCustomSelection, setHasCustomSelection] = useState(false)
+
+  const availableAdIds = useMemo(() => rows.map((row) => row?.ad_id).filter(Boolean), [rows])
+  const effectiveSelectedAdIds = hasCustomSelection ? selectedAdIds : availableAdIds
 
   useEffect(() => {
-    const availableIds = rows.map((row) => row?.ad_id).filter(Boolean)
     setSelectedAdIds((current) => {
-      const nextSelected = current.filter((adId) => availableIds.includes(adId))
-      if (nextSelected.length > 0 || availableIds.length === 0) {
+      const nextSelected = current.filter((adId) => availableAdIds.includes(adId))
+      if (nextSelected.length > 0 || availableAdIds.length === 0) {
         return nextSelected
       }
-      return availableIds
+      return availableAdIds
     })
-  }, [rows])
+  }, [availableAdIds])
 
   const chartModel = useMemo(
-    () => buildChartModel(seriesByAd, dateStart, dateEnd, selectedAdIds),
-    [dateEnd, dateStart, selectedAdIds, seriesByAd],
+    () => buildChartModel(seriesByAd, dateStart, dateEnd, effectiveSelectedAdIds),
+    [dateEnd, dateStart, effectiveSelectedAdIds, seriesByAd],
   )
   const sortedRows = useMemo(() => {
     const currentField = ordering.startsWith('-') ? ordering.slice(1) : ordering
@@ -302,8 +305,15 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
     return currentDesc ? '↓' : '↑'
   }
 
-  const handleSelectedAdsChange = (event) => {
-    setSelectedAdIds(Array.from(event.target.selectedOptions, (option) => option.value))
+  const toggleAdSelection = (adId) => {
+    if (!adId) return
+    const currentSelection = hasCustomSelection ? selectedAdIds : availableAdIds
+    setHasCustomSelection(true)
+    setSelectedAdIds(
+      currentSelection.includes(adId)
+        ? currentSelection.filter((item) => item !== adId)
+        : [...currentSelection, adId],
+    )
   }
 
   return (
@@ -320,7 +330,7 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
               <div className="axis-text">Cada serie depende dos anuncios selecionados.</div>
               <div className="axis-text">Eixo esquerdo: gasto, eixo direito: resultados.</div>
             </div>
-          ) : selectedAdIds.length === 0 || chartModel.datasets.length === 0 ? (
+          ) : effectiveSelectedAdIds.length === 0 || chartModel.datasets.length === 0 ? (
             <div className="chart-placeholder">
               <div className="axis-text">Selecione um ou mais anúncios para exibir o gráfico.</div>
               <div className="axis-text">Eixo esquerdo: gasto, eixo direito: resultados.</div>
@@ -337,26 +347,8 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
               Total de anuncios no resultado: {formatNumber(sortedRows.length)}
             </span>
           </div>
-          <label className="meta-specific-select-field">
-            <span className="meta-specific-select-label">Anuncios no gráfico</span>
-            <select
-              multiple
-              className="meta-specific-select"
-              aria-label="Anuncios plotados no gráfico"
-              value={selectedAdIds}
-              onChange={handleSelectedAdsChange}
-              disabled={loading || sortedRows.length === 0}
-              size={Math.min(Math.max(sortedRows.length, 3), 8)}
-            >
-              {sortedRows.map((row) => (
-                <option key={row.ad_id} value={row.ad_id}>
-                  {row.ad_name || row.ad_id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="hint-neutral meta-specific-select-help">
-            Selecione um ou mais anuncios para plotar gasto e resultado.
+          <p className="hint-neutral meta-specific-row-selection-help">
+            Use o botão de cada linha para exibir ou ocultar o anuncio no gráfico.
           </p>
           {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
           <div className="table-wrapper meta-specific-table-wrapper">
@@ -364,6 +356,7 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
               <thead>
                 <tr>
                   <th>Anúncio</th>
+                  <th>Gráfico</th>
                   <th>
                     <button type="button" className="th-sort-btn" onClick={() => toggleOrdering('results')}>
                       Resultados <span>{sortIndicator('results')}</span>
@@ -384,16 +377,26 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="4">Carregando dados...</td>
+                    <td colSpan="5">Carregando dados...</td>
                   </tr>
                 ) : sortedRows.length === 0 ? (
                   <tr>
-                    <td colSpan="4">Sem dados no período.</td>
+                    <td colSpan="5">Sem dados no período.</td>
                   </tr>
                 ) : (
                   sortedRows.map((row) => (
                     <tr key={row.ad_id}>
                       <td>{row.ad_name || row.ad_id}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className={`meta-specific-row-toggle ${effectiveSelectedAdIds.includes(row.ad_id) ? 'is-selected' : ''}`}
+                          aria-pressed={effectiveSelectedAdIds.includes(row.ad_id)}
+                          onClick={() => toggleAdSelection(row.ad_id)}
+                        >
+                          {effectiveSelectedAdIds.includes(row.ad_id) ? 'Ocultar' : 'Exibir'}
+                        </button>
+                      </td>
                       <td>{formatNumber(row.results)}</td>
                       <td>{formatCurrency(row.spend)}</td>
                       <td>{formatSpecificCpr(row.cpr)}</td>

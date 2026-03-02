@@ -1068,36 +1068,8 @@
   margin: 0;
 }
 
-.meta-specific-select-field {
-  display: grid;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-}
-
-.meta-specific-select-label {
-  color: #082f6e;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.meta-specific-select {
-  width: 100%;
-  min-height: 7.5rem;
-  border: 1px solid #9cb8e2;
-  border-radius: 10px;
-  background: #f6f9ff;
-  color: #102a4d;
-  padding: 0.35rem;
-  font: inherit;
-}
-
-.meta-specific-select:disabled {
-  background: #eef3fb;
-  color: #6b84a8;
-}
-
-.meta-specific-select-help {
-  margin: 0.45rem 0 0;
+.meta-specific-row-selection-help {
+  margin: 0.75rem 0 0;
 }
 
 .meta-specific-table-wrapper {
@@ -1130,6 +1102,29 @@
 
 .meta-specific-table tbody tr:nth-child(even) td {
   background: #f4f8ff;
+}
+
+.meta-specific-row-toggle {
+  min-width: 5.5rem;
+  border: 1px solid #8fb0de;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0b4ea2;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.38rem 0.75rem;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.meta-specific-row-toggle:hover {
+  background: #eef4ff;
+}
+
+.meta-specific-row-toggle.is-selected {
+  background: #0b4ea2;
+  border-color: #0b4ea2;
+  color: #ffffff;
 }
 
 .chart-legend {
