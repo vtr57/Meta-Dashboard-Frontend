@@ -5,7 +5,9 @@ vi.mock('./lib/api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    delete: vi.fn(),
   },
+  setCsrfToken: vi.fn(),
 }))
 
 import App from './App.jsx'
@@ -58,7 +60,7 @@ describe('App frontend flows', () => {
 
     expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'alice' } })
+    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'alice' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Secret123!' } })
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
@@ -135,15 +137,15 @@ describe('App frontend flows', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: 'Conexão / Sincronização' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sincronizar (7 dias)' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sincronizar Meta' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sincronizar Instagram' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ultimos 7 dias' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apenas Meta Ads' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apenas Instagram' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar (7 dias)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ultimos 7 dias' }))
 
     expect(await screen.findByText('Sincronizacao de insights (7 dias) iniciada.')).toBeInTheDocument()
     expect(await screen.findByText('Sincronizacao concluida com sucesso.')).toBeInTheDocument()
-    expect(await screen.findByText(/\[ad_accounts\]/i)).toBeInTheDocument()
+    expect(await screen.findByText('Ad Account')).toBeInTheDocument()
   })
 
   it('renders meta dashboard filters, chart and KPIs', async () => {
@@ -167,8 +169,8 @@ describe('App frontend flows', () => {
         return Promise.resolve({
           data: {
             series: [
-              { date: '2026-01-01', impressions: 100, reach: 50, spend: 10, results: 8, clicks: 20 },
-              { date: '2026-01-02', impressions: 200, reach: 120, spend: 20, results: 11, clicks: 30 },
+              { date: '2026-02-01', impressions: 100, reach: 50, spend: 10, results: 8, clicks: 20 },
+              { date: '2026-02-02', impressions: 200, reach: 120, spend: 20, results: 11, clicks: 30 },
             ],
           },
         })
@@ -188,6 +190,20 @@ describe('App frontend flows', () => {
           },
         })
       }
+      if (url === '/api/meta/specific-insights') {
+        return Promise.resolve({
+          data: {
+            timeseries_daily: [
+              { date: '2026-01-01', spend: 15 },
+              { date: '2026-01-02', spend: 22 },
+            ],
+            rows_by_ad: [
+              { ad_id: 'ad_1', ad_name: 'Ad A', results: 8, spend: 10, cpr: 1.25 },
+              { ad_id: 'ad_2', ad_name: 'Ad B', results: 0, spend: 12, cpr: null },
+            ],
+          },
+        })
+      }
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
 
@@ -197,12 +213,69 @@ describe('App frontend flows', () => {
 
     expect(await screen.findByRole('heading', { name: 'Dashboard Meta' })).toBeInTheDocument()
     expect(screen.getByLabelText('Filtro de ad account')).toBeInTheDocument()
-    expect(screen.getByText('Nova anotacao')).toBeInTheDocument()
-    expect(screen.getByText('Anotacoes da conta')).toBeInTheDocument()
+    expect(screen.getByText('Nova anotação')).toBeInTheDocument()
+    expect(screen.getByText('Anotações da conta')).toBeInTheDocument()
     expect(screen.getByText('Serie temporal de insights')).toBeInTheDocument()
-    expect(screen.queryByText('Sem dados para os filtros selecionados.')).not.toBeInTheDocument()
     expect(screen.getByText('Gasto Total')).toBeInTheDocument()
     expect(screen.getByText('Impressão Total')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Geral' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Específica' })).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('hides ad filter and renders specific tab data in meta dashboard', async () => {
+    setRoute('/app/dashboard-meta')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 31, username: 'meta-user-specific' } } })
+      }
+      if (url === '/api/meta/filters') {
+        return Promise.resolve({
+          data: {
+            ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
+            campaigns: [{ id_meta_campaign: 'cmp_1', name: 'Campanha A' }],
+            adsets: [{ id_meta_adset: 'ads_1', name: 'AdSet A' }],
+            ads: [
+              { id_meta_ad: 'ad_1', name: 'Ad A' },
+              { id_meta_ad: 'ad_2', name: 'Ad B' },
+            ],
+          },
+        })
+      }
+      if (url === '/api/meta/timeseries') {
+        return Promise.resolve({ data: { series: [] } })
+      }
+      if (url === '/api/meta/kpis') {
+        return Promise.resolve({ data: { kpis: { gasto_total: 0, impressao_total: 0, alcance_total: 0 } } })
+      }
+      if (url === '/api/meta/specific-insights') {
+        return Promise.resolve({
+          data: {
+            timeseries_daily: [{ date: '2026-01-02', spend: 32 }],
+            rows_by_ad: [
+              { ad_id: 'ad_1', ad_name: 'Ad A', results: 11, spend: 25, cpr: 2.2727 },
+              { ad_id: 'ad_2', ad_name: 'Ad B', results: 0, spend: 7, cpr: null },
+            ],
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    api.post.mockRejectedValue(new Error('No POST expected'))
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Dashboard Meta' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Específica' }))
+
+    expect(await screen.findByText('Gastos diários')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Filtro de ads')).not.toBeInTheDocument()
+    expect(screen.getByText('Gasto por anúncio')).toBeInTheDocument()
+    expect(screen.getByText('Ad A')).toBeInTheDocument()
+    expect(screen.getByText('Ad B')).toBeInTheDocument()
+    expect(screen.getByText(/25,00/)).toBeInTheDocument()
+    expect(screen.getByText('-')).toBeInTheDocument()
   })
 
   it('renders instagram KPIs and media table with sorting action', async () => {

@@ -31,6 +31,8 @@ const META_SYNC_STAGE_ORDER_META = [
   'ad insights (somente anuncio)',
 ]
 
+const SPECIFIC_DESCENDING_DEFAULTS = new Set(['results', 'spend', 'cpr'])
+
 function normalizeSyncText(value) {
   return String(value || '')
     .toLowerCase()
@@ -88,6 +90,15 @@ function computeMetaSyncProgress(syncRun, logs) {
   const partialStage = Math.min(activeStageCount, 1) * 0.5
   const rawProgress = ((completedStages + partialStage) / totalStages) * 100
   return Math.min(95, Math.max(8, Math.round(rawProgress)))
+}
+
+function formatChartDateLabel(value) {
+  const [year, month, day] = String(value || '')
+    .slice(0, 10)
+    .split('-')
+    .map((part) => Number(part))
+  if (!year || !month || !day) return String(value || '')
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
 function MetaTimeseriesChart({ series }) {
@@ -251,6 +262,109 @@ function MetaTimeseriesChart({ series }) {
   )
 }
 
+function MetaSpendTimeseriesChart({ series }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return undefined
+
+    let context = null
+    try {
+      context = canvas.getContext('2d')
+    } catch {
+      context = null
+    }
+    if (!context) return undefined
+
+    if (chartRef.current) {
+      chartRef.current.destroy()
+      chartRef.current = null
+    }
+
+    chartRef.current = new Chart(context, {
+      type: 'bar',
+      data: {
+        labels: series.map((row) => row.date),
+        datasets: [
+          {
+            label: 'Gastos diários',
+            data: series.map((row) => Number(row.spend || 0)),
+            backgroundColor: '#0b4ea2',
+            borderColor: '#082f6e',
+            borderWidth: 1,
+            borderRadius: 6,
+            maxBarThickness: 32,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            backgroundColor: '#ffffff',
+            titleColor: '#102a4d',
+            bodyColor: '#102a4d',
+            borderColor: '#9cb8e2',
+            borderWidth: 1,
+            callbacks: {
+              title: (items) => formatChartDateLabel(items[0]?.label),
+              label: (item) => `Valor gasto: ${formatCurrency(item.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#173a67',
+              callback: (_, index) => formatChartDateLabel(series[index]?.date),
+            },
+            grid: {
+              color: '#d8e4f7',
+            },
+          },
+          y: {
+            ticks: {
+              color: '#173a67',
+              callback: (value) => formatCurrency(value),
+            },
+            grid: {
+              color: '#d8e4f7',
+            },
+            title: {
+              display: true,
+              text: 'Gasto',
+              color: '#173a67',
+              font: {
+                size: 12,
+                weight: 700,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy()
+        chartRef.current = null
+      }
+    }
+  }, [series])
+
+  return (
+    <div className="chart-wrapper meta-specific-chart-wrapper">
+      <canvas ref={canvasRef} className="chartjs-canvas" aria-label="Grafico de gastos diários por anúncio" />
+    </div>
+  )
+}
+
 function normalizeSeriesToDateRange(series, dateStart, dateEnd) {
   if (!dateStart || !dateEnd) return series || []
 
@@ -285,6 +399,42 @@ function normalizeSeriesToDateRange(series, dateStart, dateEnd) {
       spend: source?.spend ?? null,
       results: source?.results ?? source?.clicks ?? null,
       clicks: source?.clicks ?? null,
+    })
+  }
+
+  return normalized
+}
+
+function normalizeSpendSeriesToDateRange(series, dateStart, dateEnd) {
+  if (!dateStart || !dateEnd) return series || []
+
+  const parseIsoDate = (value) => {
+    const [year, month, day] = String(value || '')
+      .slice(0, 10)
+      .split('-')
+      .map((part) => Number(part))
+    if (!year || !month || !day) return null
+    return new Date(Date.UTC(year, month - 1, day))
+  }
+  const formatIsoDate = (value) => value.toISOString().slice(0, 10)
+
+  const startDate = parseIsoDate(dateStart)
+  const endDate = parseIsoDate(dateEnd)
+  if (!startDate || !endDate || startDate > endDate) return series || []
+
+  const rawByDate = new Map()
+  for (const row of series || []) {
+    const key = String(row?.date || '').slice(0, 10)
+    if (key) rawByDate.set(key, row)
+  }
+
+  const normalized = []
+  for (let cursor = new Date(startDate); cursor <= endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    const key = formatIsoDate(cursor)
+    const source = rawByDate.get(key)
+    normalized.push({
+      date: key,
+      spend: source?.spend ?? null,
     })
   }
 
@@ -462,7 +612,25 @@ function SearchableMetaFilter({
   )
 }
 
+function formatSpecificCpr(value) {
+  if (value === null || value === undefined) return '-'
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return '-'
+  return formatCurrency(parsed)
+}
+
+function getSpecificSortValue(row, field) {
+  if (field === 'results') return Number(row?.results || 0)
+  if (field === 'spend') return Number(row?.spend || 0)
+  if (field === 'cpr') {
+    const parsed = Number(row?.cpr)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return String(row?.[field] || '').toLowerCase()
+}
+
 export default function MetaDashboardPage() {
+  const [activeTab, setActiveTab] = useState('general')
   const [filters, setFilters] = useState({
     ad_account_id: '',
     campaign_id: '',
@@ -482,6 +650,11 @@ export default function MetaDashboardPage() {
   const [filtersLoading, setFiltersLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [specificSeries, setSpecificSeries] = useState([])
+  const [specificRows, setSpecificRows] = useState([])
+  const [specificLoading, setSpecificLoading] = useState(false)
+  const [specificErrorMsg, setSpecificErrorMsg] = useState('')
+  const [specificOrdering, setSpecificOrdering] = useState('-spend')
   const [anotacoes, setAnotacoes] = useState([])
   const [anotacaoTexto, setAnotacaoTexto] = useState('')
   const [anotacoesLoading, setAnotacoesLoading] = useState(false)
@@ -494,9 +667,14 @@ export default function MetaDashboardPage() {
   const [sync1dStarting, setSync1dStarting] = useState(false)
   const [sync1dError, setSync1dError] = useState('')
   const [sync1dFeedback, setSync1dFeedback] = useState('')
+
   const chartSeries = useMemo(
     () => normalizeSeriesToDateRange(series, filters.date_start, filters.date_end),
     [series, filters.date_start, filters.date_end],
+  )
+  const specificChartSeries = useMemo(
+    () => normalizeSpendSeriesToDateRange(specificSeries, filters.date_start, filters.date_end),
+    [specificSeries, filters.date_start, filters.date_end],
   )
   const resultadosTotais = useMemo(
     () =>
@@ -538,6 +716,29 @@ export default function MetaDashboardPage() {
     const selected = adAccountItems.find((item) => item.id === filters.ad_account_id)
     return selected?.label || filters.ad_account_id
   }, [adAccountItems, filters.ad_account_id])
+  const sortedSpecificRows = useMemo(() => {
+    const currentField = specificOrdering.startsWith('-') ? specificOrdering.slice(1) : specificOrdering
+    const currentDesc = specificOrdering.startsWith('-')
+    const rows = [...specificRows]
+    rows.sort((left, right) => {
+      const leftValue = getSpecificSortValue(left, currentField)
+      const rightValue = getSpecificSortValue(right, currentField)
+
+      const leftNull = leftValue === null || leftValue === undefined
+      const rightNull = rightValue === null || rightValue === undefined
+      if (leftNull && rightNull) return 0
+      if (leftNull) return 1
+      if (rightNull) return -1
+
+      if (typeof leftValue === 'string' || typeof rightValue === 'string') {
+        return currentDesc
+          ? String(rightValue).localeCompare(String(leftValue), 'pt-BR')
+          : String(leftValue).localeCompare(String(rightValue), 'pt-BR')
+      }
+      return currentDesc ? rightValue - leftValue : leftValue - rightValue
+    })
+    return rows
+  }, [specificOrdering, specificRows])
 
   const loadFilters = useCallback(async () => {
     setFiltersLoading(true)
@@ -589,6 +790,29 @@ export default function MetaDashboardPage() {
     }
   }, [filters])
 
+  const loadSpecificData = useCallback(async () => {
+    setSpecificLoading(true)
+    setSpecificErrorMsg('')
+    try {
+      const params = {
+        date_start: filters.date_start,
+        date_end: filters.date_end,
+      }
+      if (filters.ad_account_id) params.ad_account_id = filters.ad_account_id
+      if (filters.campaign_id) params.campaign_id = filters.campaign_id
+      if (filters.adset_id) params.adset_id = filters.adset_id
+
+      const response = await api.get('/api/meta/specific-insights', { params })
+      setSpecificSeries(response.data?.timeseries_daily || [])
+      setSpecificRows(response.data?.rows_by_ad || [])
+    } catch (error) {
+      logUiError('dashboard-meta', 'meta-specific-insights', error)
+      setSpecificErrorMsg(error.response?.data?.detail || 'Falha ao carregar dados específicos do dashboard Meta.')
+    } finally {
+      setSpecificLoading(false)
+    }
+  }, [filters.ad_account_id, filters.campaign_id, filters.adset_id, filters.date_end, filters.date_start])
+
   const loadAnotacoes = useCallback(async () => {
     if (!filters.ad_account_id) {
       setAnotacoes([])
@@ -614,6 +838,7 @@ export default function MetaDashboardPage() {
 
   const loadFiltersRef = useRef(loadFilters)
   const loadDashboardDataRef = useRef(loadDashboardData)
+  const loadSpecificDataRef = useRef(loadSpecificData)
 
   useEffect(() => {
     loadFiltersRef.current = loadFilters
@@ -624,12 +849,21 @@ export default function MetaDashboardPage() {
   }, [loadDashboardData])
 
   useEffect(() => {
+    loadSpecificDataRef.current = loadSpecificData
+  }, [loadSpecificData])
+
+  useEffect(() => {
     loadFilters()
   }, [loadFilters])
 
   useEffect(() => {
     loadDashboardData()
   }, [loadDashboardData])
+
+  useEffect(() => {
+    if (activeTab !== 'specific') return
+    loadSpecificData()
+  }, [activeTab, loadSpecificData])
 
   useEffect(() => {
     loadAnotacoes()
@@ -670,7 +904,11 @@ export default function MetaDashboardPage() {
         } else if (finished) {
           if (run.status === 'success') {
             setSync1dFeedback('Sincronização total de 1 dia concluída.')
-            await Promise.allSettled([loadDashboardDataRef.current(), loadFiltersRef.current()])
+            await Promise.allSettled([
+              loadDashboardDataRef.current(),
+              loadFiltersRef.current(),
+              loadSpecificDataRef.current(),
+            ])
           } else {
             setSync1dError('Sincronização total de 1 dia finalizou com erro.')
           }
@@ -795,10 +1033,53 @@ export default function MetaDashboardPage() {
     }
   }
 
+  const toggleSpecificOrdering = (field) => {
+    const currentField = specificOrdering.startsWith('-') ? specificOrdering.slice(1) : specificOrdering
+    const currentDesc = specificOrdering.startsWith('-')
+    if (currentField === field) {
+      setSpecificOrdering(currentDesc ? field : `-${field}`)
+      return
+    }
+    setSpecificOrdering(SPECIFIC_DESCENDING_DEFAULTS.has(field) ? `-${field}` : field)
+  }
+
+  const specificSortIndicator = (field) => {
+    const currentField = specificOrdering.startsWith('-') ? specificOrdering.slice(1) : specificOrdering
+    const currentDesc = specificOrdering.startsWith('-')
+    if (currentField !== field) return '↕'
+    return currentDesc ? '↓' : '↑'
+  }
+
   return (
     <section className="view-card">
       <h2>Dashboard Meta</h2>
-      <div className="filter-grid meta-filter-grid">
+
+      <div className="meta-tab-list" role="tablist" aria-label="Visões do dashboard Meta">
+        <button
+          id="meta-tab-general"
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'general'}
+          aria-controls="meta-panel-general"
+          className={`meta-tab-btn ${activeTab === 'general' ? 'is-active' : ''}`}
+          onClick={() => setActiveTab('general')}
+        >
+          Geral
+        </button>
+        <button
+          id="meta-tab-specific"
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'specific'}
+          aria-controls="meta-panel-specific"
+          className={`meta-tab-btn ${activeTab === 'specific' ? 'is-active' : ''}`}
+          onClick={() => setActiveTab('specific')}
+        >
+          Específica
+        </button>
+      </div>
+
+      <div className={`filter-grid meta-filter-grid ${activeTab === 'specific' ? 'is-specific' : ''}`}>
         <SearchableMetaFilter
           value={filters.ad_account_id}
           items={adAccountItems}
@@ -823,177 +1104,262 @@ export default function MetaDashboardPage() {
           ariaLabel="Filtro de adset"
           disabled={filtersLoading}
         />
-        <SearchableMetaFilter
-          value={filters.ad_id}
-          items={adItems}
-          onChange={(nextValue) => updateFilter('ad_id', nextValue)}
-          placeholder="Todos os ads"
-          ariaLabel="Filtro de ads"
-          disabled={filtersLoading}
-        />
+        {activeTab === 'general' ? (
+          <SearchableMetaFilter
+            value={filters.ad_id}
+            items={adItems}
+            onChange={(nextValue) => updateFilter('ad_id', nextValue)}
+            placeholder="Todos os ads"
+            ariaLabel="Filtro de ads"
+            disabled={filtersLoading}
+          />
+        ) : null}
         <input
           type="date"
           value={filters.date_start}
           onChange={(event) => updateFilter('date_start', event.target.value)}
+          aria-label="Data inicial"
         />
         <input
           type="date"
           value={filters.date_end}
           onChange={(event) => updateFilter('date_end', event.target.value)}
+          aria-label="Data final"
         />
       </div>
 
-      <div className="chart-and-kpis">
-        <article className="chart-card">
-          <h3>Serie temporal de insights</h3>
-          {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
-          {series.length === 0 ? (
-            <div className="chart-placeholder">
-              <div className="axis-text">Sem dados para os filtros selecionados.</div>
-              <div className="axis-text">Eixo esquerdo: alcance / impressoes</div>
-              <div className="axis-text">Eixo direito: gasto / results</div>
-            </div>
-          ) : (
-            <MetaTimeseriesChart series={chartSeries} />
-          )}
-        </article>
+      {activeTab === 'general' ? (
+        <div id="meta-panel-general" role="tabpanel" aria-labelledby="meta-tab-general" className="meta-tab-panel">
+          <div className="chart-and-kpis">
+            <article className="chart-card">
+              <h3>Serie temporal de insights</h3>
+              {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
+              {dataLoading ? (
+                <p className="hint-neutral">Carregando dados...</p>
+              ) : series.length === 0 ? (
+                <div className="chart-placeholder">
+                  <div className="axis-text">Sem dados para os filtros selecionados.</div>
+                  <div className="axis-text">Eixo esquerdo: alcance / impressoes</div>
+                  <div className="axis-text">Eixo direito: gasto / results</div>
+                </div>
+              ) : (
+                <MetaTimeseriesChart series={chartSeries} />
+              )}
+            </article>
 
-        <article className="kpis-card">
-          <h3>KPIs</h3>
-          <div className="meta-sync-1d-panel">
-            <div className="meta-sync-1d-header">
-              <button
-                type="button"
-                className="primary-btn meta-sync-1d-btn"
-                onClick={handleSyncTotal1d}
-                disabled={sync1dStarting || sync1dInProgress}
-              >
-                <i className={`fa-solid ${sync1dInProgress ? 'fa-spinner fa-spin' : 'fa-rotate'}`} aria-hidden="true" />{' '}
-                {sync1dInProgress ? 'Sincronizando 1 dia...' : 'Sincronizar Total (1 dia)'}
-              </button>
-              {sync1dRun ? (
-                <span className={`sync-status-badge status-${sync1dRun.status || 'idle'}`}>{sync1dStatusLabel}</span>
-              ) : null}
-            </div>
-            <div
-              className="sync-progress-track meta-sync-1d-track"
-              role="progressbar"
-              aria-label="Progresso da sincronização total de 1 dia"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(sync1dProgress)}
-            >
-              <div className="sync-progress-fill" style={{ width: `${sync1dProgress}%` }} />
-            </div>
-            <p className="sync-progress-value meta-sync-1d-value">{Math.round(sync1dProgress)}% concluído</p>
-            {sync1dFeedback ? <p className="hint-ok meta-sync-1d-feedback">{sync1dFeedback}</p> : null}
-            {sync1dError ? <p className="hint-error meta-sync-1d-feedback">{sync1dError}</p> : null}
-          </div>
-          <div className="kpi-grid">
-            <article className="kpi-tile">
-              <p className="kpi-label">Gasto Total</p>
-              <p className="kpi-value">{formatCurrency(kpis?.gasto_total)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">Impressão Total</p>
-              <p className="kpi-value">{formatNumber(kpis?.impressao_total)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">Alcance Total</p>
-              <p className="kpi-value">{formatNumber(kpis?.alcance_total)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">Resultados Totais</p>
-              <p className="kpi-value">{formatNumber(resultadosTotais)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">CPR</p>
-              <p className="kpi-value">{cpr === null ? 'N/A' : formatCurrency(cpr)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">CTR Médio</p>
-              <p className="kpi-value">{formatDecimal(kpis?.ctr_medio, 2)}%</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">CPM Médio</p>
-              <p className="kpi-value">{formatCurrency(kpis?.cpm_medio)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">CPC Médio</p>
-              <p className="kpi-value">{formatCurrency(kpis?.cpc_medio)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">Frequência Média</p>
-              <p className="kpi-value">{formatDecimal(kpis?.frequencia_media, 2)}</p>
-            </article>
-            <article className="kpi-tile">
-              <p className="kpi-label">Correlação Gasto x Results</p>
-              <p className="kpi-value">{formatCorrelation(kpis?.correlacao_gasto_resultados)}</p>
-            </article>
-          </div>
-        </article>
-      </div>
-      <div className="meta-notes-layout">
-        <article className="meta-notes-card">
-          <div className="meta-notes-header">
-            <h3>Nova anotação</h3>
-            {anotacoesFeedback ? <span className="meta-notes-inline-feedback">{anotacoesFeedback}</span> : null}
-          </div>
-          <p className="meta-notes-account">
-            Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
-          </p>
-          <textarea
-            className="meta-notes-input"
-            value={anotacaoTexto}
-            onChange={(event) => setAnotacaoTexto(event.target.value)}
-            placeholder="Escreva uma observacao sobre esta conta..."
-            disabled={!filters.ad_account_id || anotacoesSubmitting}
-          />
-          <div className="meta-notes-actions">
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={handleSalvarAnotacao}
-              disabled={!filters.ad_account_id || anotacoesSubmitting}
-            >
-              {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
-          {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
-        </article>
-        <article className="meta-notes-card">
-          <h3>Anotações da conta</h3>
-          {!filters.ad_account_id ? (
-            <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
-          ) : anotacoesLoading ? (
-            <p className="hint-neutral">Carregando anotacoes...</p>
-          ) : anotacoes.length === 0 ? (
-            <p className="hint-neutral">Nenhuma anotacao cadastrada para esta conta.</p>
-          ) : (
-            <div className="meta-notes-list">
-              {anotacoes.map((item) => (
-                <article key={item.id} className="meta-note-item">
+            <article className="kpis-card">
+              <h3>KPIs</h3>
+              <div className="meta-sync-1d-panel">
+                <div className="meta-sync-1d-header">
                   <button
                     type="button"
-                    className="meta-note-delete-btn"
-                    onClick={() => handleExcluirAnotacao(item.id)}
-                    disabled={anotacaoDeletingId === item.id}
-                    aria-label="Excluir anotação"
-                    title="Excluir anotação"
+                    className="primary-btn meta-sync-1d-btn"
+                    onClick={handleSyncTotal1d}
+                    disabled={sync1dStarting || sync1dInProgress}
                   >
-                    <i
-                      className={`fa-solid ${anotacaoDeletingId === item.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}
-                      aria-hidden="true"
-                    />
+                    <i className={`fa-solid ${sync1dInProgress ? 'fa-spinner fa-spin' : 'fa-rotate'}`} aria-hidden="true" />{' '}
+                    {sync1dInProgress ? 'Sincronizando 1 dia...' : 'Sincronizar Total (1 dia)'}
                   </button>
-                  <p>{item.observacoes}</p>
-                  <small>{formatDateTime(item.data_criacao)}</small>
+                  {sync1dRun ? (
+                    <span className={`sync-status-badge status-${sync1dRun.status || 'idle'}`}>{sync1dStatusLabel}</span>
+                  ) : null}
+                </div>
+                <div
+                  className="sync-progress-track meta-sync-1d-track"
+                  role="progressbar"
+                  aria-label="Progresso da sincronização total de 1 dia"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(sync1dProgress)}
+                >
+                  <div className="sync-progress-fill" style={{ width: `${sync1dProgress}%` }} />
+                </div>
+                <p className="sync-progress-value meta-sync-1d-value">{Math.round(sync1dProgress)}% concluído</p>
+                {sync1dFeedback ? <p className="hint-ok meta-sync-1d-feedback">{sync1dFeedback}</p> : null}
+                {sync1dError ? <p className="hint-error meta-sync-1d-feedback">{sync1dError}</p> : null}
+              </div>
+              <div className="kpi-grid">
+                <article className="kpi-tile">
+                  <p className="kpi-label">Gasto Total</p>
+                  <p className="kpi-value">{formatCurrency(kpis?.gasto_total)}</p>
                 </article>
-              ))}
-            </div>
-          )}
-        </article>
-      </div>
+                <article className="kpi-tile">
+                  <p className="kpi-label">Impressão Total</p>
+                  <p className="kpi-value">{formatNumber(kpis?.impressao_total)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">Alcance Total</p>
+                  <p className="kpi-value">{formatNumber(kpis?.alcance_total)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">Resultados Totais</p>
+                  <p className="kpi-value">{formatNumber(resultadosTotais)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">CPR</p>
+                  <p className="kpi-value">{cpr === null ? 'N/A' : formatCurrency(cpr)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">CTR Médio</p>
+                  <p className="kpi-value">{formatDecimal(kpis?.ctr_medio, 2)}%</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">CPM Médio</p>
+                  <p className="kpi-value">{formatCurrency(kpis?.cpm_medio)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">CPC Médio</p>
+                  <p className="kpi-value">{formatCurrency(kpis?.cpc_medio)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">Frequência Média</p>
+                  <p className="kpi-value">{formatDecimal(kpis?.frequencia_media, 2)}</p>
+                </article>
+                <article className="kpi-tile">
+                  <p className="kpi-label">Correlação Gasto x Results</p>
+                  <p className="kpi-value">{formatCorrelation(kpis?.correlacao_gasto_resultados)}</p>
+                </article>
+              </div>
+            </article>
+          </div>
+
+          <div className="meta-notes-layout">
+            <article className="meta-notes-card">
+              <div className="meta-notes-header">
+                <h3>Nova anotação</h3>
+                {anotacoesFeedback ? <span className="meta-notes-inline-feedback">{anotacoesFeedback}</span> : null}
+              </div>
+              <p className="meta-notes-account">
+                Conta selecionada: <strong>{selectedAdAccountLabel || 'Nenhuma conta selecionada'}</strong>
+              </p>
+              <textarea
+                className="meta-notes-input"
+                value={anotacaoTexto}
+                onChange={(event) => setAnotacaoTexto(event.target.value)}
+                placeholder="Escreva uma observacao sobre esta conta..."
+                disabled={!filters.ad_account_id || anotacoesSubmitting}
+              />
+              <div className="meta-notes-actions">
+                <button
+                  type="button"
+                  className="primary-btn"
+                  onClick={handleSalvarAnotacao}
+                  disabled={!filters.ad_account_id || anotacoesSubmitting}
+                >
+                  {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+              {anotacoesError ? <p className="hint-error">{anotacoesError}</p> : null}
+            </article>
+            <article className="meta-notes-card">
+              <h3>Anotações da conta</h3>
+              {!filters.ad_account_id ? (
+                <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
+              ) : anotacoesLoading ? (
+                <p className="hint-neutral">Carregando anotacoes...</p>
+              ) : anotacoes.length === 0 ? (
+                <p className="hint-neutral">Nenhuma anotacao cadastrada para esta conta.</p>
+              ) : (
+                <div className="meta-notes-list">
+                  {anotacoes.map((item) => (
+                    <article key={item.id} className="meta-note-item">
+                      <button
+                        type="button"
+                        className="meta-note-delete-btn"
+                        onClick={() => handleExcluirAnotacao(item.id)}
+                        disabled={anotacaoDeletingId === item.id}
+                        aria-label="Excluir anotação"
+                        title="Excluir anotação"
+                      >
+                        <i
+                          className={`fa-solid ${anotacaoDeletingId === item.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}
+                          aria-hidden="true"
+                        />
+                      </button>
+                      <p>{item.observacoes}</p>
+                      <small>{formatDateTime(item.data_criacao)}</small>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </article>
+          </div>
+        </div>
+      ) : (
+        <div id="meta-panel-specific" role="tabpanel" aria-labelledby="meta-tab-specific" className="meta-tab-panel">
+          <div className="meta-specific-layout">
+            <article className="chart-card">
+              <h3>Gastos diários</h3>
+              {specificErrorMsg ? <p className="hint-error">{specificErrorMsg}</p> : null}
+              {specificLoading ? (
+                <p className="hint-neutral">Carregando dados...</p>
+              ) : specificChartSeries.every((row) => row.spend === null || row.spend === undefined) ? (
+                <div className="chart-placeholder">
+                  <div className="axis-text">Sem dados no período.</div>
+                  <div className="axis-text">Eixo X: dia</div>
+                  <div className="axis-text">Eixo Y: gasto</div>
+                </div>
+              ) : (
+                <MetaSpendTimeseriesChart series={specificChartSeries} />
+              )}
+            </article>
+
+            <article className="chart-card">
+              <div className="meta-specific-table-header">
+                <h3>Gasto por anúncio</h3>
+                <span className="hint-neutral meta-specific-table-caption">
+                  Total de anúncios no resultado: {formatNumber(sortedSpecificRows.length)}
+                </span>
+              </div>
+              {specificErrorMsg ? <p className="hint-error">{specificErrorMsg}</p> : null}
+              <div className="table-wrapper meta-specific-table-wrapper">
+                <table className="media-table">
+                  <thead>
+                    <tr>
+                      <th>Anúncio</th>
+                      <th>
+                        <button type="button" className="th-sort-btn" onClick={() => toggleSpecificOrdering('results')}>
+                          Resultados <span>{specificSortIndicator('results')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button type="button" className="th-sort-btn" onClick={() => toggleSpecificOrdering('spend')}>
+                          Valor gasto <span>{specificSortIndicator('spend')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button type="button" className="th-sort-btn" onClick={() => toggleSpecificOrdering('cpr')}>
+                          CPR <span>{specificSortIndicator('cpr')}</span>
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {specificLoading ? (
+                      <tr>
+                        <td colSpan="4">Carregando dados...</td>
+                      </tr>
+                    ) : sortedSpecificRows.length === 0 ? (
+                      <tr>
+                        <td colSpan="4">Sem dados no período.</td>
+                      </tr>
+                    ) : (
+                      sortedSpecificRows.map((row) => (
+                        <tr key={row.ad_id}>
+                          <td>{row.ad_name || row.ad_id}</td>
+                          <td>{formatNumber(row.results)}</td>
+                          <td>{formatCurrency(row.spend)}</td>
+                          <td>{formatSpecificCpr(row.cpr)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
