@@ -202,16 +202,16 @@ describe('App frontend flows', () => {
                 ad_id: 'ad_1',
                 ad_name: 'Ad A',
                 points: [
-                  { date: '2026-01-01', spend: 6 },
-                  { date: '2026-01-02', spend: 10 },
+                  { date: '2026-01-01', spend: 6, results: 4 },
+                  { date: '2026-01-02', spend: 10, results: 5 },
                 ],
               },
               {
                 ad_id: 'ad_2',
                 ad_name: 'Ad B',
                 points: [
-                  { date: '2026-01-01', spend: 9 },
-                  { date: '2026-01-02', spend: 12 },
+                  { date: '2026-01-01', spend: 9, results: 5 },
+                  { date: '2026-01-02', spend: 12, results: 6 },
                 ],
               },
             ],
@@ -274,12 +274,12 @@ describe('App frontend flows', () => {
               {
                 ad_id: 'ad_1',
                 ad_name: 'Ad A',
-                points: [{ date: '2026-01-02', spend: 25 }],
+                points: [{ date: '2026-01-02', spend: 25, results: 11 }],
               },
               {
                 ad_id: 'ad_2',
                 ad_name: 'Ad B',
-                points: [{ date: '2026-01-02', spend: 7 }],
+                points: [{ date: '2026-01-02', spend: 7, results: 0 }],
               },
             ],
             rows_by_ad: [
@@ -299,11 +299,12 @@ describe('App frontend flows', () => {
     expect(await screen.findByRole('heading', { name: 'Dashboard Meta' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: 'Específica' }))
 
-    expect(await screen.findByText('Gastos diários')).toBeInTheDocument()
+    expect(await screen.findByText('Gasto e resultados por anuncio')).toBeInTheDocument()
     expect(screen.queryByLabelText('Filtro de ads')).not.toBeInTheDocument()
     expect(screen.getByText('Gasto por anúncio')).toBeInTheDocument()
-    expect(screen.getByText('Ad A')).toBeInTheDocument()
-    expect(screen.getByText('Ad B')).toBeInTheDocument()
+    expect(screen.getByLabelText('Anuncios plotados no gráfico')).toBeInTheDocument()
+    expect(screen.getAllByText('Ad A')).toHaveLength(2)
+    expect(screen.getAllByText('Ad B')).toHaveLength(2)
     expect(screen.getByText(/25,00/)).toBeInTheDocument()
     expect(screen.getByText('-')).toBeInTheDocument()
   })

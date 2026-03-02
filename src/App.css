@@ -1068,6 +1068,38 @@
   margin: 0;
 }
 
+.meta-specific-select-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.meta-specific-select-label {
+  color: #082f6e;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.meta-specific-select {
+  width: 100%;
+  min-height: 7.5rem;
+  border: 1px solid #9cb8e2;
+  border-radius: 10px;
+  background: #f6f9ff;
+  color: #102a4d;
+  padding: 0.35rem;
+  font: inherit;
+}
+
+.meta-specific-select:disabled {
+  background: #eef3fb;
+  color: #6b84a8;
+}
+
+.meta-specific-select-help {
+  margin: 0.45rem 0 0;
+}
+
 .meta-specific-table-wrapper {
   margin-top: 0.75rem;
 }
@@ -1090,6 +1122,14 @@
 
 .meta-specific-layout > .chart-card:last-child {
   flex: 0 0 auto;
+}
+
+.meta-specific-table tbody tr:nth-child(odd) td {
+  background: #ffffff;
+}
+
+.meta-specific-table tbody tr:nth-child(even) td {
+  background: #f4f8ff;
 }
 
 .chart-legend {

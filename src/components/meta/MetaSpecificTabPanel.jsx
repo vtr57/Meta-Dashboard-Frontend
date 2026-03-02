@@ -14,7 +14,7 @@ function formatChartDateLabel(value) {
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
-function buildChartModel(seriesByAd, dateStart, dateEnd) {
+function buildChartModel(seriesByAd, dateStart, dateEnd, selectedAdIds) {
   if (!dateStart || !dateEnd) {
     return { labels: [], datasets: [] }
   }
@@ -40,27 +40,52 @@ function buildChartModel(seriesByAd, dateStart, dateEnd) {
     labels.push(formatIsoDate(cursor))
   }
 
-  const datasets = (seriesByAd || []).map((row, index) => {
+  const selectedSet = new Set((selectedAdIds || []).filter(Boolean))
+  const filteredSeries = (seriesByAd || []).filter((row) => selectedSet.has(row?.ad_id))
+
+  const datasets = filteredSeries.flatMap((row, index) => {
     const color = CHART_COLORS[index % CHART_COLORS.length]
     const rawByDate = new Map()
     for (const point of row?.points || []) {
       const key = String(point?.date || '').slice(0, 10)
       if (key) rawByDate.set(key, point)
     }
-    return {
-      label: row?.ad_name || row?.ad_id || `Anúncio ${index + 1}`,
-      data: labels.map((label) => {
-        const point = rawByDate.get(label)
-        return point ? Number(point.spend || 0) : null
-      }),
-      borderColor: color,
-      backgroundColor: color,
-      borderWidth: 2,
-      pointRadius: 2,
-      pointHoverRadius: 4,
-      spanGaps: true,
-      tension: 0,
-    }
+    const adLabel = row?.ad_name || row?.ad_id || `Anuncio ${index + 1}`
+    return [
+      {
+        label: `${adLabel}, Gasto`,
+        metric: 'spend',
+        data: labels.map((label) => {
+          const point = rawByDate.get(label)
+          return point ? Number(point.spend || 0) : null
+        }),
+        borderColor: color,
+        backgroundColor: color,
+        borderWidth: 2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        spanGaps: true,
+        tension: 0,
+        yAxisID: 'ySpend',
+      },
+      {
+        label: `${adLabel}, Resultados`,
+        metric: 'results',
+        data: labels.map((label) => {
+          const point = rawByDate.get(label)
+          return point ? Number(point.results || 0) : null
+        }),
+        borderColor: color,
+        backgroundColor: color,
+        borderWidth: 2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        spanGaps: true,
+        tension: 0,
+        borderDash: [6, 4],
+        yAxisID: 'yResults',
+      },
+    ]
   })
 
   return { labels, datasets }
@@ -135,7 +160,10 @@ function MetaSpendTimeseriesChart({ chartModel }) {
             borderWidth: 1,
             callbacks: {
               title: (items) => formatChartDateLabel(items[0]?.label),
-              label: (item) => `${item.dataset.label}: ${formatCurrency(item.parsed.y)}`,
+              label: (item) =>
+                item.dataset.metric === 'results'
+                  ? `${item.dataset.label}: ${formatNumber(item.parsed.y)}`
+                  : `${item.dataset.label}: ${formatCurrency(item.parsed.y)}`,
             },
           },
         },
@@ -149,8 +177,9 @@ function MetaSpendTimeseriesChart({ chartModel }) {
               color: '#d8e4f7',
             },
           },
-          y: {
+          ySpend: {
             type: 'linear',
+            position: 'left',
             ticks: {
               color: '#173a67',
               callback: (value) => formatCurrency(value),
@@ -161,6 +190,26 @@ function MetaSpendTimeseriesChart({ chartModel }) {
             title: {
               display: true,
               text: 'Gasto',
+              color: '#173a67',
+              font: {
+                size: 12,
+                weight: 700,
+              },
+            },
+          },
+          yResults: {
+            type: 'linear',
+            position: 'right',
+            ticks: {
+              color: '#173a67',
+              callback: (value) => formatNumber(value),
+            },
+            grid: {
+              drawOnChartArea: false,
+            },
+            title: {
+              display: true,
+              text: 'Resultados',
               color: '#173a67',
               font: {
                 size: 12,
@@ -182,17 +231,33 @@ function MetaSpendTimeseriesChart({ chartModel }) {
 
   return (
     <div className="chart-wrapper meta-specific-chart-wrapper">
-      <canvas ref={canvasRef} className="chartjs-canvas" aria-label="Grafico de gastos diários por anúncio" />
+      <canvas
+        ref={canvasRef}
+        className="chartjs-canvas"
+        aria-label="Grafico de gasto e resultados diarios por anuncio"
+      />
     </div>
   )
 }
 
 export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorMsg, dateStart, dateEnd }) {
   const [ordering, setOrdering] = useState('-spend')
+  const [selectedAdIds, setSelectedAdIds] = useState(() => rows.map((row) => row?.ad_id).filter(Boolean))
+
+  useEffect(() => {
+    const availableIds = rows.map((row) => row?.ad_id).filter(Boolean)
+    setSelectedAdIds((current) => {
+      const nextSelected = current.filter((adId) => availableIds.includes(adId))
+      if (nextSelected.length > 0 || availableIds.length === 0) {
+        return nextSelected
+      }
+      return availableIds
+    })
+  }, [rows])
 
   const chartModel = useMemo(
-    () => buildChartModel(seriesByAd, dateStart, dateEnd),
-    [dateEnd, dateStart, seriesByAd],
+    () => buildChartModel(seriesByAd, dateStart, dateEnd, selectedAdIds),
+    [dateEnd, dateStart, selectedAdIds, seriesByAd],
   )
   const sortedRows = useMemo(() => {
     const currentField = ordering.startsWith('-') ? ordering.slice(1) : ordering
@@ -237,19 +302,28 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
     return currentDesc ? '↓' : '↑'
   }
 
+  const handleSelectedAdsChange = (event) => {
+    setSelectedAdIds(Array.from(event.target.selectedOptions, (option) => option.value))
+  }
+
   return (
     <div className="meta-tab-panel">
       <div className="meta-specific-layout">
         <article className="chart-card">
-          <h3>Gastos diários</h3>
+          <h3>Gasto e resultados por anuncio</h3>
           {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
           {loading ? (
             <p className="hint-neutral">Carregando dados...</p>
-          ) : chartModel.datasets.length === 0 ? (
+          ) : rows.length === 0 ? (
             <div className="chart-placeholder">
               <div className="axis-text">Sem dados no período.</div>
-              <div className="axis-text">Cada linha representa um anúncio ativo.</div>
-              <div className="axis-text">Eixo Y: valor gasto</div>
+              <div className="axis-text">Cada serie depende dos anuncios selecionados.</div>
+              <div className="axis-text">Eixo esquerdo: gasto, eixo direito: resultados.</div>
+            </div>
+          ) : selectedAdIds.length === 0 || chartModel.datasets.length === 0 ? (
+            <div className="chart-placeholder">
+              <div className="axis-text">Selecione um ou mais anúncios para exibir o gráfico.</div>
+              <div className="axis-text">Eixo esquerdo: gasto, eixo direito: resultados.</div>
             </div>
           ) : (
             <MetaSpendTimeseriesChart chartModel={chartModel} />
@@ -260,12 +334,33 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
           <div className="meta-specific-table-header">
             <h3>Gasto por anúncio</h3>
             <span className="hint-neutral meta-specific-table-caption">
-              Total de anúncios no resultado: {formatNumber(sortedRows.length)}
+              Total de anuncios no resultado: {formatNumber(sortedRows.length)}
             </span>
           </div>
+          <label className="meta-specific-select-field">
+            <span className="meta-specific-select-label">Anuncios no gráfico</span>
+            <select
+              multiple
+              className="meta-specific-select"
+              aria-label="Anuncios plotados no gráfico"
+              value={selectedAdIds}
+              onChange={handleSelectedAdsChange}
+              disabled={loading || sortedRows.length === 0}
+              size={Math.min(Math.max(sortedRows.length, 3), 8)}
+            >
+              {sortedRows.map((row) => (
+                <option key={row.ad_id} value={row.ad_id}>
+                  {row.ad_name || row.ad_id}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint-neutral meta-specific-select-help">
+            Selecione um ou mais anuncios para plotar gasto e resultado.
+          </p>
           {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
           <div className="table-wrapper meta-specific-table-wrapper">
-            <table className="media-table">
+            <table className="media-table meta-specific-table">
               <thead>
                 <tr>
                   <th>Anúncio</th>
