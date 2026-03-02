@@ -194,8 +194,26 @@ describe('App frontend flows', () => {
         return Promise.resolve({
           data: {
             timeseries_daily: [
-              { date: '2026-01-01', spend: 15 },
-              { date: '2026-01-02', spend: 22 },
+              { date: '2026-01-01', spend: 15, results: 9 },
+              { date: '2026-01-02', spend: 22, results: 11 },
+            ],
+            timeseries_by_ad: [
+              {
+                ad_id: 'ad_1',
+                ad_name: 'Ad A',
+                points: [
+                  { date: '2026-01-01', spend: 6 },
+                  { date: '2026-01-02', spend: 10 },
+                ],
+              },
+              {
+                ad_id: 'ad_2',
+                ad_name: 'Ad B',
+                points: [
+                  { date: '2026-01-01', spend: 9 },
+                  { date: '2026-01-02', spend: 12 },
+                ],
+              },
             ],
             rows_by_ad: [
               { ad_id: 'ad_1', ad_name: 'Ad A', results: 8, spend: 10, cpr: 1.25 },
@@ -251,7 +269,19 @@ describe('App frontend flows', () => {
       if (url === '/api/meta/specific-insights') {
         return Promise.resolve({
           data: {
-            timeseries_daily: [{ date: '2026-01-02', spend: 32 }],
+            timeseries_daily: [{ date: '2026-01-02', spend: 32, results: 11 }],
+            timeseries_by_ad: [
+              {
+                ad_id: 'ad_1',
+                ad_name: 'Ad A',
+                points: [{ date: '2026-01-02', spend: 25 }],
+              },
+              {
+                ad_id: 'ad_2',
+                ad_name: 'Ad B',
+                points: [{ date: '2026-01-02', spend: 7 }],
+              },
+            ],
             rows_by_ad: [
               { ad_id: 'ad_1', ad_name: 'Ad A', results: 11, spend: 25, cpr: 2.2727 },
               { ad_id: 'ad_2', ad_name: 'Ad B', results: 0, spend: 7, cpr: null },

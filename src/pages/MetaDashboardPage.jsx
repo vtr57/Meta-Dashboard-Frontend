@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Chart from 'chart.js/auto'
+import MetaSpecificTabPanel from '../components/meta/MetaSpecificTabPanel'
 import api from '../lib/api'
 import {
   daysAgo,
@@ -30,8 +31,6 @@ const META_SYNC_STAGE_ORDER_META = [
   'ads',
   'ad insights (somente anuncio)',
 ]
-
-const SPECIFIC_DESCENDING_DEFAULTS = new Set(['results', 'spend', 'cpr'])
 
 function normalizeSyncText(value) {
   return String(value || '')
@@ -90,15 +89,6 @@ function computeMetaSyncProgress(syncRun, logs) {
   const partialStage = Math.min(activeStageCount, 1) * 0.5
   const rawProgress = ((completedStages + partialStage) / totalStages) * 100
   return Math.min(95, Math.max(8, Math.round(rawProgress)))
-}
-
-function formatChartDateLabel(value) {
-  const [year, month, day] = String(value || '')
-    .slice(0, 10)
-    .split('-')
-    .map((part) => Number(part))
-  if (!year || !month || !day) return String(value || '')
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
 function MetaTimeseriesChart({ series }) {
@@ -262,109 +252,6 @@ function MetaTimeseriesChart({ series }) {
   )
 }
 
-function MetaSpendTimeseriesChart({ series }) {
-  const canvasRef = useRef(null)
-  const chartRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return undefined
-
-    let context = null
-    try {
-      context = canvas.getContext('2d')
-    } catch {
-      context = null
-    }
-    if (!context) return undefined
-
-    if (chartRef.current) {
-      chartRef.current.destroy()
-      chartRef.current = null
-    }
-
-    chartRef.current = new Chart(context, {
-      type: 'bar',
-      data: {
-        labels: series.map((row) => row.date),
-        datasets: [
-          {
-            label: 'Gastos diários',
-            data: series.map((row) => Number(row.spend || 0)),
-            backgroundColor: '#0b4ea2',
-            borderColor: '#082f6e',
-            borderWidth: 1,
-            borderRadius: 6,
-            maxBarThickness: 32,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false,
-          },
-          tooltip: {
-            backgroundColor: '#ffffff',
-            titleColor: '#102a4d',
-            bodyColor: '#102a4d',
-            borderColor: '#9cb8e2',
-            borderWidth: 1,
-            callbacks: {
-              title: (items) => formatChartDateLabel(items[0]?.label),
-              label: (item) => `Valor gasto: ${formatCurrency(item.parsed.y)}`,
-            },
-          },
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: '#173a67',
-              callback: (_, index) => formatChartDateLabel(series[index]?.date),
-            },
-            grid: {
-              color: '#d8e4f7',
-            },
-          },
-          y: {
-            ticks: {
-              color: '#173a67',
-              callback: (value) => formatCurrency(value),
-            },
-            grid: {
-              color: '#d8e4f7',
-            },
-            title: {
-              display: true,
-              text: 'Gasto',
-              color: '#173a67',
-              font: {
-                size: 12,
-                weight: 700,
-              },
-            },
-          },
-        },
-      },
-    })
-
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy()
-        chartRef.current = null
-      }
-    }
-  }, [series])
-
-  return (
-    <div className="chart-wrapper meta-specific-chart-wrapper">
-      <canvas ref={canvasRef} className="chartjs-canvas" aria-label="Grafico de gastos diários por anúncio" />
-    </div>
-  )
-}
-
 function normalizeSeriesToDateRange(series, dateStart, dateEnd) {
   if (!dateStart || !dateEnd) return series || []
 
@@ -399,42 +286,6 @@ function normalizeSeriesToDateRange(series, dateStart, dateEnd) {
       spend: source?.spend ?? null,
       results: source?.results ?? source?.clicks ?? null,
       clicks: source?.clicks ?? null,
-    })
-  }
-
-  return normalized
-}
-
-function normalizeSpendSeriesToDateRange(series, dateStart, dateEnd) {
-  if (!dateStart || !dateEnd) return series || []
-
-  const parseIsoDate = (value) => {
-    const [year, month, day] = String(value || '')
-      .slice(0, 10)
-      .split('-')
-      .map((part) => Number(part))
-    if (!year || !month || !day) return null
-    return new Date(Date.UTC(year, month - 1, day))
-  }
-  const formatIsoDate = (value) => value.toISOString().slice(0, 10)
-
-  const startDate = parseIsoDate(dateStart)
-  const endDate = parseIsoDate(dateEnd)
-  if (!startDate || !endDate || startDate > endDate) return series || []
-
-  const rawByDate = new Map()
-  for (const row of series || []) {
-    const key = String(row?.date || '').slice(0, 10)
-    if (key) rawByDate.set(key, row)
-  }
-
-  const normalized = []
-  for (let cursor = new Date(startDate); cursor <= endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
-    const key = formatIsoDate(cursor)
-    const source = rawByDate.get(key)
-    normalized.push({
-      date: key,
-      spend: source?.spend ?? null,
     })
   }
 
@@ -612,23 +463,6 @@ function SearchableMetaFilter({
   )
 }
 
-function formatSpecificCpr(value) {
-  if (value === null || value === undefined) return '-'
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) return '-'
-  return formatCurrency(parsed)
-}
-
-function getSpecificSortValue(row, field) {
-  if (field === 'results') return Number(row?.results || 0)
-  if (field === 'spend') return Number(row?.spend || 0)
-  if (field === 'cpr') {
-    const parsed = Number(row?.cpr)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-  return String(row?.[field] || '').toLowerCase()
-}
-
 export default function MetaDashboardPage() {
   const [activeTab, setActiveTab] = useState('general')
   const [filters, setFilters] = useState({
@@ -650,11 +484,10 @@ export default function MetaDashboardPage() {
   const [filtersLoading, setFiltersLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [specificSeries, setSpecificSeries] = useState([])
+  const [specificSeriesByAd, setSpecificSeriesByAd] = useState([])
   const [specificRows, setSpecificRows] = useState([])
   const [specificLoading, setSpecificLoading] = useState(false)
   const [specificErrorMsg, setSpecificErrorMsg] = useState('')
-  const [specificOrdering, setSpecificOrdering] = useState('-spend')
   const [anotacoes, setAnotacoes] = useState([])
   const [anotacaoTexto, setAnotacaoTexto] = useState('')
   const [anotacoesLoading, setAnotacoesLoading] = useState(false)
@@ -671,10 +504,6 @@ export default function MetaDashboardPage() {
   const chartSeries = useMemo(
     () => normalizeSeriesToDateRange(series, filters.date_start, filters.date_end),
     [series, filters.date_start, filters.date_end],
-  )
-  const specificChartSeries = useMemo(
-    () => normalizeSpendSeriesToDateRange(specificSeries, filters.date_start, filters.date_end),
-    [specificSeries, filters.date_start, filters.date_end],
   )
   const resultadosTotais = useMemo(
     () =>
@@ -716,29 +545,6 @@ export default function MetaDashboardPage() {
     const selected = adAccountItems.find((item) => item.id === filters.ad_account_id)
     return selected?.label || filters.ad_account_id
   }, [adAccountItems, filters.ad_account_id])
-  const sortedSpecificRows = useMemo(() => {
-    const currentField = specificOrdering.startsWith('-') ? specificOrdering.slice(1) : specificOrdering
-    const currentDesc = specificOrdering.startsWith('-')
-    const rows = [...specificRows]
-    rows.sort((left, right) => {
-      const leftValue = getSpecificSortValue(left, currentField)
-      const rightValue = getSpecificSortValue(right, currentField)
-
-      const leftNull = leftValue === null || leftValue === undefined
-      const rightNull = rightValue === null || rightValue === undefined
-      if (leftNull && rightNull) return 0
-      if (leftNull) return 1
-      if (rightNull) return -1
-
-      if (typeof leftValue === 'string' || typeof rightValue === 'string') {
-        return currentDesc
-          ? String(rightValue).localeCompare(String(leftValue), 'pt-BR')
-          : String(leftValue).localeCompare(String(rightValue), 'pt-BR')
-      }
-      return currentDesc ? rightValue - leftValue : leftValue - rightValue
-    })
-    return rows
-  }, [specificOrdering, specificRows])
 
   const loadFilters = useCallback(async () => {
     setFiltersLoading(true)
@@ -803,7 +609,7 @@ export default function MetaDashboardPage() {
       if (filters.adset_id) params.adset_id = filters.adset_id
 
       const response = await api.get('/api/meta/specific-insights', { params })
-      setSpecificSeries(response.data?.timeseries_daily || [])
+      setSpecificSeriesByAd(response.data?.timeseries_by_ad || [])
       setSpecificRows(response.data?.rows_by_ad || [])
     } catch (error) {
       logUiError('dashboard-meta', 'meta-specific-insights', error)
@@ -1031,23 +837,6 @@ export default function MetaDashboardPage() {
     } finally {
       setAnotacaoDeletingId(null)
     }
-  }
-
-  const toggleSpecificOrdering = (field) => {
-    const currentField = specificOrdering.startsWith('-') ? specificOrdering.slice(1) : specificOrdering
-    const currentDesc = specificOrdering.startsWith('-')
-    if (currentField === field) {
-      setSpecificOrdering(currentDesc ? field : `-${field}`)
-      return
-    }
-    setSpecificOrdering(SPECIFIC_DESCENDING_DEFAULTS.has(field) ? `-${field}` : field)
-  }
-
-  const specificSortIndicator = (field) => {
-    const currentField = specificOrdering.startsWith('-') ? specificOrdering.slice(1) : specificOrdering
-    const currentDesc = specificOrdering.startsWith('-')
-    if (currentField !== field) return '↕'
-    return currentDesc ? '↓' : '↑'
   }
 
   return (
@@ -1286,78 +1075,15 @@ export default function MetaDashboardPage() {
           </div>
         </div>
       ) : (
-        <div id="meta-panel-specific" role="tabpanel" aria-labelledby="meta-tab-specific" className="meta-tab-panel">
-          <div className="meta-specific-layout">
-            <article className="chart-card">
-              <h3>Gastos diários</h3>
-              {specificErrorMsg ? <p className="hint-error">{specificErrorMsg}</p> : null}
-              {specificLoading ? (
-                <p className="hint-neutral">Carregando dados...</p>
-              ) : specificChartSeries.every((row) => row.spend === null || row.spend === undefined) ? (
-                <div className="chart-placeholder">
-                  <div className="axis-text">Sem dados no período.</div>
-                  <div className="axis-text">Eixo X: dia</div>
-                  <div className="axis-text">Eixo Y: gasto</div>
-                </div>
-              ) : (
-                <MetaSpendTimeseriesChart series={specificChartSeries} />
-              )}
-            </article>
-
-            <article className="chart-card">
-              <div className="meta-specific-table-header">
-                <h3>Gasto por anúncio</h3>
-                <span className="hint-neutral meta-specific-table-caption">
-                  Total de anúncios no resultado: {formatNumber(sortedSpecificRows.length)}
-                </span>
-              </div>
-              {specificErrorMsg ? <p className="hint-error">{specificErrorMsg}</p> : null}
-              <div className="table-wrapper meta-specific-table-wrapper">
-                <table className="media-table">
-                  <thead>
-                    <tr>
-                      <th>Anúncio</th>
-                      <th>
-                        <button type="button" className="th-sort-btn" onClick={() => toggleSpecificOrdering('results')}>
-                          Resultados <span>{specificSortIndicator('results')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className="th-sort-btn" onClick={() => toggleSpecificOrdering('spend')}>
-                          Valor gasto <span>{specificSortIndicator('spend')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className="th-sort-btn" onClick={() => toggleSpecificOrdering('cpr')}>
-                          CPR <span>{specificSortIndicator('cpr')}</span>
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {specificLoading ? (
-                      <tr>
-                        <td colSpan="4">Carregando dados...</td>
-                      </tr>
-                    ) : sortedSpecificRows.length === 0 ? (
-                      <tr>
-                        <td colSpan="4">Sem dados no período.</td>
-                      </tr>
-                    ) : (
-                      sortedSpecificRows.map((row) => (
-                        <tr key={row.ad_id}>
-                          <td>{row.ad_name || row.ad_id}</td>
-                          <td>{formatNumber(row.results)}</td>
-                          <td>{formatCurrency(row.spend)}</td>
-                          <td>{formatSpecificCpr(row.cpr)}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          </div>
+        <div id="meta-panel-specific" role="tabpanel" aria-labelledby="meta-tab-specific">
+          <MetaSpecificTabPanel
+            seriesByAd={specificSeriesByAd}
+            rows={specificRows}
+            loading={specificLoading}
+            errorMsg={specificErrorMsg}
+            dateStart={filters.date_start}
+            dateEnd={filters.date_end}
+          />
         </div>
       )}
     </section>
