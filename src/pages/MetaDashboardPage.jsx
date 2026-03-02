@@ -841,31 +841,33 @@ export default function MetaDashboardPage() {
 
   return (
     <section className="view-card view-card-meta meta-dashboard-view">
-      <h2>Dashboard Meta</h2>
+      <div className="meta-page-header">
+        <h2>Dashboard Meta</h2>
 
-      <div className="meta-tab-list" role="tablist" aria-label="Visões do dashboard Meta">
-        <button
-          id="meta-tab-general"
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'general'}
-          aria-controls="meta-panel-general"
-          className={`meta-tab-btn ${activeTab === 'general' ? 'is-active' : ''}`}
-          onClick={() => setActiveTab('general')}
-        >
-          Geral
-        </button>
-        <button
-          id="meta-tab-specific"
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'specific'}
-          aria-controls="meta-panel-specific"
-          className={`meta-tab-btn ${activeTab === 'specific' ? 'is-active' : ''}`}
-          onClick={() => setActiveTab('specific')}
-        >
-          Específica
-        </button>
+        <div className="meta-tab-list" role="tablist" aria-label="Visões do dashboard Meta">
+          <button
+            id="meta-tab-general"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'general'}
+            aria-controls="meta-panel-general"
+            className={`meta-tab-btn ${activeTab === 'general' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('general')}
+          >
+            Geral
+          </button>
+          <button
+            id="meta-tab-specific"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'specific'}
+            aria-controls="meta-panel-specific"
+            className={`meta-tab-btn ${activeTab === 'specific' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('specific')}
+          >
+            Específica
+          </button>
+        </div>
       </div>
 
       <div className={`filter-grid meta-filter-grid ${activeTab === 'specific' ? 'is-specific' : ''}`}>

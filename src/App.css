@@ -346,6 +346,17 @@
   flex-direction: column;
 }
 
+.meta-page-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.meta-page-header h2 {
+  margin: 0;
+}
+
 .connection-view {
   gap: 0.9rem;
 }
@@ -779,7 +790,6 @@
 }
 
 .meta-tab-list {
-  margin-top: 0.9rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -1899,13 +1909,11 @@
 
 @media (max-width: 640px) {
   .meta-tab-list {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    max-width: 100%;
+    flex-wrap: wrap;
   }
 
   .meta-tab-btn {
-    width: 100%;
     justify-content: center;
   }
 
