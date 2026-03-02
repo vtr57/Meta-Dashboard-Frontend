@@ -840,7 +840,7 @@ export default function MetaDashboardPage() {
   }
 
   return (
-    <section className="view-card">
+    <section className="view-card view-card-meta meta-dashboard-view">
       <h2>Dashboard Meta</h2>
 
       <div className="meta-tab-list" role="tablist" aria-label="Visões do dashboard Meta">
