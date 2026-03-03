@@ -180,6 +180,7 @@ function MetaSpendTimeseriesChart({ chartModel }) {
           ySpend: {
             type: 'linear',
             position: 'left',
+            beginAtZero: true,
             ticks: {
               color: '#173a67',
               callback: (value) => formatCurrency(value),
