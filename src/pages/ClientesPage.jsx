@@ -919,7 +919,6 @@ export function ClientesVisualizarPage() {
               </th>
               <th>Name (Cliente)</th>
               <th>Nome (AdAccount)</th>
-              <th>ID Meta AdAccount</th>
               <th>Data renovacao creditos</th>
               <th>Nicho de atuacao</th>
               <th className="clientes-col-money">Valor investido</th>
@@ -934,14 +933,11 @@ export function ClientesVisualizarPage() {
           <tbody>
             {filteredClientes.length === 0 ? (
               <tr>
-                <td colSpan="13">Nenhum cliente encontrado com os filtros atuais.</td>
+                <td colSpan="12">Nenhum cliente encontrado com os filtros atuais.</td>
               </tr>
             ) : (
               filteredClientes.map((row) => {
                 const isEditing = editingId === row.id
-                const editingAdAccount = isEditing
-                  ? adAccounts.find((adAccount) => String(adAccount.id) === String(editingForm.nome))
-                  : null
                 const renovacaoStatus = getRenovacaoStatus(row.data_renovacao_creditos)
                 const financialStatus = getFinancialStatus(row)
 
@@ -996,7 +992,6 @@ export function ClientesVisualizarPage() {
                         row.nome || '-'
                       )}
                     </td>
-                    <td>{isEditing ? editingAdAccount?.id_meta_ad_account || '-' : row.id_meta_ad_account || '-'}</td>
                     <td>
                       {isEditing ? (
                         <input
