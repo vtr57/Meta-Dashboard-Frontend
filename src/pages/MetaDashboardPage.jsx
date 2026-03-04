@@ -197,6 +197,7 @@ function MetaTimeseriesChart({ series }) {
           yLeft: {
             type: 'linear',
             position: 'left',
+            beginAtZero: true,
             ticks: {
               color: '#173a67',
             },
@@ -216,6 +217,7 @@ function MetaTimeseriesChart({ series }) {
           yRight: {
             type: 'linear',
             position: 'right',
+            beginAtZero: true,
             ticks: {
               color: '#173a67',
             },
