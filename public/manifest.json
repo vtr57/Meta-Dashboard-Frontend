@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "VDashboard",
+  "short_name": "VDashboard",
+  "description": "Dashboard para acompanhar conexoes, clientes e dados de Meta e Instagram.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#d2e1fa",
+  "theme_color": "#001944",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/VDashboard.png",
+      "sizes": "1000x1000",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
