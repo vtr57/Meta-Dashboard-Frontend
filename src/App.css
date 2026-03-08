@@ -1053,7 +1053,8 @@
 
 .meta-specific-chart-wrapper {
   flex: 1;
-  min-height: 320px;
+  min-height: 0;
+  height: clamp(320px, 60vw, 480px);
 }
 
 .meta-specific-table-header {
@@ -1157,13 +1158,15 @@
 }
 
 .chart-wrapper {
+  position: relative;
   width: 100%;
-  height: auto;
-  min-height: 320px;
+  min-height: 0;
+  height: clamp(320px, 56vw, 420px);
   border: 1px solid #b8ccef;
   border-radius: 8px;
   background: #ffffff;
   flex: 1;
+  overflow: hidden;
 }
 
 .chartjs-canvas {
@@ -1883,6 +1886,14 @@
     grid-template-columns: 1fr;
     flex: none;
     min-height: unset;
+  }
+
+  .chart-wrapper {
+    height: clamp(260px, 72vw, 360px);
+  }
+
+  .meta-specific-chart-wrapper {
+    height: clamp(280px, 82vw, 420px);
   }
 
   .view-card-meta {
