@@ -560,6 +560,7 @@ export default function InstagramDashboardPage() {
             <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
             <div className="mini-kpi">Contas engajadas: {formatNumber(kpis?.contas_engajadas)}</div>
             <div className="mini-kpi">Total de interações: {formatNumber(kpis?.total_interacoes)}</div>
+            <div className="mini-kpi">Seguidores atuais: {formatNumber(kpis?.seguidores_atuais)}</div>
           </div>
         </article>
       </div>

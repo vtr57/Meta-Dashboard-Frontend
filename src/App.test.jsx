@@ -333,6 +333,7 @@ describe('App frontend flows', () => {
               impressoes: 4000,
               contas_engajadas: 320,
               total_interacoes: 780,
+              seguidores_atuais: 2200,
             },
           },
         })
@@ -419,6 +420,7 @@ describe('App frontend flows', () => {
     expect(await screen.findByText(/Alcance: 1.000/)).toBeInTheDocument()
     expect(screen.getByText(/Contas engajadas: 320/)).toBeInTheDocument()
     expect(screen.getByText(/Total de interações: 780/)).toBeInTheDocument()
+    expect(screen.getByText(/Seguidores atuais: 2.200/)).toBeInTheDocument()
     expect(screen.getByText('Serie temporal da conta')).toBeInTheDocument()
     expect(screen.getByText('Post de teste')).toBeInTheDocument()
 
