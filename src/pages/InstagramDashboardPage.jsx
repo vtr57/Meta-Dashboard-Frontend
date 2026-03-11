@@ -54,8 +54,8 @@ function InstagramTimeseriesChart({ series }) {
             tension: 0.2,
           },
           {
-            label: 'Interações',
-            data: series.map((row) => toNumber(row.interactions)),
+            label: 'Alcance',
+            data: series.map((row) => toNumber(row.reach)),
             yAxisID: 'yLeft',
             borderColor: '#0f766e',
             backgroundColor: '#0f766e',
@@ -64,8 +64,8 @@ function InstagramTimeseriesChart({ series }) {
             tension: 0.2,
           },
           {
-            label: 'Seguidores',
-            data: series.map((row) => toNumber(row.followers)),
+            label: 'Follower Count',
+            data: series.map((row) => toNumber(row.follower_count)),
             yAxisID: 'yRight',
             borderColor: '#b45309',
             backgroundColor: '#b45309',
@@ -85,7 +85,7 @@ function InstagramTimeseriesChart({ series }) {
         },
         plugins: {
           legend: {
-            display: true,
+            display: false,
             labels: {
               color: '#173a67',
               font: {
@@ -127,7 +127,7 @@ function InstagramTimeseriesChart({ series }) {
             },
             title: {
               display: true,
-              text: 'Impressões / Interações',
+              text: 'Impressões / Alcance',
               color: '#173a67',
               font: {
                 size: 12,
@@ -148,7 +148,7 @@ function InstagramTimeseriesChart({ series }) {
             },
             title: {
               display: true,
-              text: 'Seguidores',
+              text: 'Follower Count',
               color: '#173a67',
               font: {
                 size: 12,
@@ -201,8 +201,11 @@ export default function InstagramDashboardPage() {
       (timeseries || []).map((row) => ({
         date: row.date,
         impressions: Number(row.impressions || 0),
-        interactions: Number(row.interactions || 0),
-        followers: row.followers === null || row.followers === undefined ? null : Number(row.followers || 0),
+        reach: Number(row.reach || 0),
+        follower_count:
+          row.follower_count === null || row.follower_count === undefined
+            ? null
+            : Number(row.follower_count || 0),
       })),
     [timeseries],
   )
@@ -375,14 +378,8 @@ export default function InstagramDashboardPage() {
           <div className="kpi-grid instagram-kpi-grid">
             <div className="mini-kpi">Alcance: {formatNumber(kpis?.alcance)}</div>
             <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
-            <div className="mini-kpi">Interações: {formatNumber(kpis?.interacoes)}</div>
-            <div className="mini-kpi">Seguidores: {formatNumber(kpis?.seguidores)}</div>
-            <div className="mini-kpi">Curtidas: {formatNumber(kpis?.curtidas)}</div>
-            <div className="mini-kpi">Comentários: {formatNumber(kpis?.comentarios)}</div>
-            <div className="mini-kpi">Salvos: {formatNumber(kpis?.salvos)}</div>
-            <div className="mini-kpi">Compartilhamentos: {formatNumber(kpis?.compartilhamentos)}</div>
-            <div className="mini-kpi">Plays: {formatNumber(kpis?.plays)}</div>
-            <div className="mini-kpi">Visitas ao perfil: {formatNumber(kpis?.profile_views)}</div>
+            <div className="mini-kpi">Contas engajadas: {formatNumber(kpis?.contas_engajadas)}</div>
+            <div className="mini-kpi">Total de interações: {formatNumber(kpis?.total_interacoes)}</div>
           </div>
         </article>
       </div>

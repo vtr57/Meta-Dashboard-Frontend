@@ -331,12 +331,8 @@ describe('App frontend flows', () => {
             kpis: {
               alcance: 1000,
               impressoes: 4000,
-              interacoes: 320,
-              seguidores: 2200,
-              curtidas: 120,
-              comentarios: 20,
-              salvos: 9,
-              compartilhamentos: 5,
+              contas_engajadas: 320,
+              total_interacoes: 780,
             },
           },
         })
@@ -345,8 +341,8 @@ describe('App frontend flows', () => {
         return Promise.resolve({
           data: {
             timeseries: [
-              { date: '2026-02-19', impressions: 1800, interactions: 140, followers: 2190 },
-              { date: '2026-02-20', impressions: 2200, interactions: 180, followers: 2200 },
+              { date: '2026-02-19', impressions: 1800, reach: 1200, follower_count: 2190 },
+              { date: '2026-02-20', impressions: 2200, reach: 1500, follower_count: 2200 },
             ],
           },
         })
@@ -387,7 +383,8 @@ describe('App frontend flows', () => {
     expect(await screen.findByRole('heading', { name: 'Dashboard Instagram' })).toBeInTheDocument()
 
     expect(await screen.findByText(/Alcance: 1.000/)).toBeInTheDocument()
-    expect(screen.getByText(/Interações: 320/)).toBeInTheDocument()
+    expect(screen.getByText(/Contas engajadas: 320/)).toBeInTheDocument()
+    expect(screen.getByText(/Total de interações: 780/)).toBeInTheDocument()
     expect(screen.getByText('Serie temporal da conta')).toBeInTheDocument()
     expect(screen.getByText('Post de teste')).toBeInTheDocument()
 
