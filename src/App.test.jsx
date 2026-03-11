@@ -347,6 +347,29 @@ describe('App frontend flows', () => {
           },
         })
       }
+      if (url === '/api/meta/sync/99/logs') {
+        return Promise.resolve({
+          data: {
+            sync_run: {
+              id: 99,
+              status: 'success',
+              is_finished: true,
+              finished_at: '2026-02-20T12:10:00Z',
+            },
+            logs: [
+              { id: 1, entidade: 'stage', mensagem: '[Facebook Pages] concluido em 1.0s.', timestamp: '2026-02-20T12:00:01Z' },
+              {
+                id: 2,
+                entidade: 'stage',
+                mensagem: '[Instagram Business + insights da conta] concluido em 3.0s.',
+                timestamp: '2026-02-20T12:00:03Z',
+              },
+              { id: 3, entidade: 'stage', mensagem: '[Midias + insights das midias] concluido em 6.0s.', timestamp: '2026-02-20T12:00:06Z' },
+            ],
+            next_since_id: 3,
+          },
+        })
+      }
       if (url === '/api/instagram/media-table') {
         const ordering = config?.params?.ordering || '-date'
         return Promise.resolve({
@@ -376,7 +399,18 @@ describe('App frontend flows', () => {
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
 
-    api.post.mockRejectedValue(new Error('No POST expected'))
+    api.post.mockImplementation((url) => {
+      if (url === '/api/instagram/sync-selected') {
+        return Promise.resolve({
+          data: {
+            sync_run_id: 99,
+            status: 'pending',
+            sync_scope: 'instagram',
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected POST ${url}`))
+    })
 
     render(<App />)
 
@@ -387,6 +421,12 @@ describe('App frontend flows', () => {
     expect(screen.getByText(/Total de interações: 780/)).toBeInTheDocument()
     expect(screen.getByText('Serie temporal da conta')).toBeInTheDocument()
     expect(screen.getByText('Post de teste')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Filtro de conta Instagram'), { target: { value: 'ig_1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar conta selecionada' }))
+
+    expect(await screen.findByText('Sincronizacao da conta concluida com sucesso.')).toBeInTheDocument()
+    expect(screen.getByText('100% concluido')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Reach/ }))
 

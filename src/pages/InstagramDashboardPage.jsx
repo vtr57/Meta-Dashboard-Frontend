@@ -11,6 +11,59 @@ import {
   truncateText,
 } from './pageUtils'
 
+const INSTAGRAM_SYNC_STAGE_ORDER = ['facebook pages', 'instagram business + insights da conta', 'midias + insights das midias']
+
+function normalizeSyncText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+function formatSyncStatusLabel(status) {
+  if (status === 'running') return 'Em andamento'
+  if (status === 'success') return 'Concluida'
+  if (status === 'failed') return 'Falhou'
+  if (status === 'pending') return 'Na fila'
+  return 'Pronta'
+}
+
+function computeInstagramSyncProgress(syncRun, logs) {
+  if (!syncRun) return 0
+  if (syncRun.status === 'success') return 100
+
+  const normalizedMessages = (logs || []).map((row) => normalizeSyncText(row.mensagem))
+  let completedStages = 0
+  let activeStageCount = 0
+
+  for (const stageName of INSTAGRAM_SYNC_STAGE_ORDER) {
+    const stageStartMarker = `[${stageName}] inicio`
+    const stageDoneMarker = `[${stageName}] concluido`
+    const stageDone = normalizedMessages.some((message) => message.includes(stageDoneMarker))
+    if (stageDone) {
+      completedStages += 1
+      continue
+    }
+    const stageStarted = normalizedMessages.some((message) => message.includes(stageStartMarker))
+    if (stageStarted) {
+      activeStageCount += 1
+    }
+  }
+
+  const totalStages = INSTAGRAM_SYNC_STAGE_ORDER.length || 1
+  if (syncRun.status === 'failed') {
+    return Math.max(8, Math.round((completedStages / totalStages) * 100))
+  }
+  if (completedStages === 0 && activeStageCount === 0) {
+    return logs.length > 0 ? 8 : 0
+  }
+
+  const partialStage = Math.min(activeStageCount, 1) * 0.5
+  const rawProgress = ((completedStages + partialStage) / totalStages) * 100
+  return Math.min(95, Math.max(8, Math.round(rawProgress)))
+}
+
 function InstagramTimeseriesChart({ series }) {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
@@ -192,9 +245,18 @@ export default function InstagramDashboardPage() {
   const [accountsLoading, setAccountsLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [syncRun, setSyncRun] = useState(null)
+  const [syncLogs, setSyncLogs] = useState([])
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncFeedback, setSyncFeedback] = useState('')
+  const [syncErrorMsg, setSyncErrorMsg] = useState('')
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
   const pageStart = (currentPage - 1) * pageSize
   const pageRows = rows.slice(pageStart, pageStart + pageSize)
+  const syncInProgress = !!syncRun && !syncRun.is_finished
+  const syncProgress = useMemo(() => computeInstagramSyncProgress(syncRun, syncLogs), [syncRun, syncLogs])
+  const syncStatusLabel = syncRun ? formatSyncStatusLabel(syncRun.status) : 'Pronta'
+  const syncStatusClass = syncRun ? `status-${syncRun.status}` : 'status-idle'
 
   const chartSeries = useMemo(
     () =>
@@ -296,8 +358,98 @@ export default function InstagramDashboardPage() {
     }
   }, [currentPage, totalPages])
 
+  useEffect(() => {
+    if (!syncRun?.id || syncRun?.is_finished) return
+    let canceled = false
+    let timer
+    let sinceId = 0
+
+    const poll = async () => {
+      try {
+        const response = await api.get(`/api/meta/sync/${syncRun.id}/logs`, {
+          params: { since_id: sinceId },
+        })
+        const payload = response.data || {}
+        const incomingLogs = payload.logs || []
+        if (incomingLogs.length > 0) {
+          setSyncLogs((prev) => [...prev, ...incomingLogs])
+        }
+        sinceId = payload.next_since_id || sinceId
+        const run = payload.sync_run || {}
+        const finished = !!run.is_finished
+        setSyncRun((prev) => ({
+          id: prev?.id || syncRun.id,
+          status: run.status || prev?.status || syncRun.status,
+          is_finished: finished,
+          sync_scope: prev?.sync_scope || 'instagram',
+        }))
+        if (!finished && !canceled) {
+          timer = window.setTimeout(poll, 2000)
+          return
+        }
+        if (finished) {
+          if (run.status === 'success') {
+            setSyncFeedback('Sincronizacao da conta concluida com sucesso.')
+            setSyncErrorMsg('')
+            loadDashboardData(ordering)
+          } else {
+            setSyncErrorMsg('A sincronizacao da conta finalizou com erro.')
+            setSyncFeedback('')
+          }
+        }
+      } catch (error) {
+        logUiError('dashboard-instagram', 'instagram-sync-logs', error)
+        if (!canceled) {
+          timer = window.setTimeout(poll, 2000)
+        }
+      }
+    }
+
+    poll()
+    return () => {
+      canceled = true
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [syncRun?.id, syncRun?.is_finished, loadDashboardData, ordering])
+
   const applyFilters = () => {
     loadDashboardData(ordering)
+  }
+
+  const handleSyncSelected = async () => {
+    if (!filters.instagram_account_id) {
+      setSyncErrorMsg('Selecione uma conta de Instagram para sincronizar.')
+      setSyncFeedback('')
+      return
+    }
+
+    setSyncLoading(true)
+    setSyncErrorMsg('')
+    setSyncFeedback('')
+    try {
+      const response = await api.post('/api/instagram/sync-selected', {
+        instagram_account_id: filters.instagram_account_id,
+        date_start: filters.date_start,
+        date_end: filters.date_end,
+      })
+      const runId = response.data?.sync_run_id
+      if (runId) {
+        setSyncLogs([])
+        setSyncRun({
+          id: runId,
+          status: response.data?.status || 'pending',
+          is_finished: false,
+          sync_scope: response.data?.sync_scope || 'instagram',
+        })
+        setSyncFeedback('Sincronizacao da conta iniciada.')
+      }
+    } catch (error) {
+      logUiError('dashboard-instagram', 'instagram-sync-selected', error)
+      setSyncErrorMsg(error.response?.data?.detail || 'Falha ao iniciar sincronizacao da conta.')
+      setSyncFeedback('')
+    } finally {
+      setSyncLoading(false)
+    }
   }
 
   const toggleOrdering = (field) => {
@@ -374,7 +526,35 @@ export default function InstagramDashboardPage() {
         </article>
 
         <article className="kpis-card">
-          <h3>Resumo do período</h3>
+          <div className="connection-card-title instagram-sync-header">
+            <h3>Resumo do período</h3>
+            <span className={`sync-status-badge ${syncStatusClass}`}>{syncStatusLabel}</span>
+          </div>
+          <div className="instagram-sync-panel">
+            <button
+              type="button"
+              className="primary-btn sync-primary-btn instagram-sync-btn"
+              onClick={handleSyncSelected}
+              disabled={syncLoading || syncInProgress || !filters.instagram_account_id}
+            >
+              {syncLoading || syncInProgress ? 'Sincronizando...' : 'Sincronizar conta selecionada'}
+            </button>
+            <p className="sync-group-caption">
+              Sincroniza apenas a conta escolhida e respeita o período filtrado acima.
+            </p>
+            {syncFeedback ? <p className="hint-ok">{syncFeedback}</p> : null}
+            {syncErrorMsg ? <p className="hint-error">{syncErrorMsg}</p> : null}
+            <div
+              className="sync-progress-track"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(syncProgress)}
+            >
+              <div className="sync-progress-fill" style={{ width: `${syncProgress}%` }} />
+            </div>
+            <p className="sync-progress-value">{Math.round(syncProgress)}% concluido</p>
+          </div>
           <div className="kpi-grid instagram-kpi-grid">
             <div className="mini-kpi">Alcance: {formatNumber(kpis?.alcance)}</div>
             <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>

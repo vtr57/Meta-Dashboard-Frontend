@@ -1198,6 +1198,18 @@
   margin-top: 1rem;
 }
 
+.instagram-sync-header {
+  margin-bottom: 0.75rem;
+}
+
+.instagram-sync-panel {
+  margin-bottom: 0.9rem;
+}
+
+.instagram-sync-btn {
+  margin-top: 0;
+}
+
 .meta-sync-1d-panel {
   margin-bottom: 0.7rem;
   border: 1px solid #b9cdef;
