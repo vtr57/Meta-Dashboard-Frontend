@@ -1309,6 +1309,14 @@
   color: #082f6e;
 }
 
+.media-table tbody tr:nth-child(odd) td {
+  background: #ffffff;
+}
+
+.media-table tbody tr:nth-child(even) td {
+  background: #f4f8ff;
+}
+
 .th-sort-btn {
   display: inline-flex;
   align-items: center;
