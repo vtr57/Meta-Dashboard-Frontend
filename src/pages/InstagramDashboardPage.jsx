@@ -359,11 +359,6 @@ export default function InstagramDashboardPage() {
       <div className="chart-and-kpis instagram-overview-grid">
         <article className="chart-card">
           <h3>Serie temporal da conta</h3>
-          <div className="chart-legend">
-            <span className="legend-item legend-impressions">Impressões</span>
-            <span className="legend-item legend-interactions">Interações</span>
-            <span className="legend-item legend-followers">Seguidores</span>
-          </div>
           {chartSeries.length === 0 ? (
             <div className="chart-placeholder">
               <strong>Sem série diária disponível.</strong>
