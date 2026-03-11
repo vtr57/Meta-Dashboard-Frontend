@@ -1,16 +1,189 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Chart from 'chart.js/auto'
 import api from '../lib/api'
-import { formatDateTime, formatNumber, logUiError, toInputDate, truncateText } from './pageUtils'
+import {
+  daysAgo,
+  formatDate,
+  formatDateTime,
+  formatNumber,
+  logUiError,
+  toInputDate,
+  truncateText,
+} from './pageUtils'
+
+function InstagramTimeseriesChart({ series }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return undefined
+
+    let context = null
+    try {
+      context = canvas.getContext('2d')
+    } catch {
+      context = null
+    }
+    if (!context) return undefined
+
+    if (chartRef.current) {
+      chartRef.current.destroy()
+      chartRef.current = null
+    }
+
+    const toNumber = (value) => {
+      if (value === null || value === undefined) return null
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+
+    chartRef.current = new Chart(context, {
+      type: 'line',
+      data: {
+        labels: series.map((row) => row.date),
+        datasets: [
+          {
+            label: 'Impressões',
+            data: series.map((row) => toNumber(row.impressions)),
+            yAxisID: 'yLeft',
+            borderColor: '#1d4ed8',
+            backgroundColor: '#1d4ed8',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+          },
+          {
+            label: 'Interações',
+            data: series.map((row) => toNumber(row.interactions)),
+            yAxisID: 'yLeft',
+            borderColor: '#0f766e',
+            backgroundColor: '#0f766e',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+          },
+          {
+            label: 'Seguidores',
+            data: series.map((row) => toNumber(row.followers)),
+            yAxisID: 'yRight',
+            borderColor: '#b45309',
+            backgroundColor: '#b45309',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+            spanGaps: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#173a67',
+              font: {
+                size: 12,
+                weight: 700,
+              },
+            },
+          },
+          tooltip: {
+            backgroundColor: '#ffffff',
+            titleColor: '#102a4d',
+            bodyColor: '#102a4d',
+            borderColor: '#9cb8e2',
+            borderWidth: 1,
+            callbacks: {
+              title: (items) => formatDate(items[0]?.label),
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#173a67',
+              callback: (_, index) => formatDate(series[index]?.date),
+            },
+            grid: {
+              color: '#bdd0ef',
+            },
+          },
+          yLeft: {
+            type: 'linear',
+            position: 'left',
+            beginAtZero: true,
+            ticks: {
+              color: '#173a67',
+            },
+            grid: {
+              color: '#bdd0ef',
+            },
+            title: {
+              display: true,
+              text: 'Impressões / Interações',
+              color: '#173a67',
+              font: {
+                size: 12,
+                weight: 700,
+              },
+            },
+          },
+          yRight: {
+            type: 'linear',
+            position: 'right',
+            beginAtZero: true,
+            ticks: {
+              color: '#173a67',
+            },
+            grid: {
+              drawOnChartArea: false,
+              color: '#bdd0ef',
+            },
+            title: {
+              display: true,
+              text: 'Seguidores',
+              color: '#173a67',
+              font: {
+                size: 12,
+                weight: 700,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy()
+        chartRef.current = null
+      }
+    }
+  }, [series])
+
+  return (
+    <div className="chart-wrapper">
+      <canvas ref={canvasRef} className="chartjs-canvas" aria-label="Grafico temporal do Instagram" />
+    </div>
+  )
+}
 
 export default function InstagramDashboardPage() {
   const pageSize = 20
   const [filters, setFilters] = useState({
     instagram_account_id: '',
-    date_start: '2000-01-01',
+    date_start: toInputDate(daysAgo(30)),
     date_end: toInputDate(new Date()),
   })
   const [accounts, setAccounts] = useState([])
   const [kpis, setKpis] = useState(null)
+  const [timeseries, setTimeseries] = useState([])
   const [rows, setRows] = useState([])
   const [tableTotal, setTableTotal] = useState(0)
   const [ordering, setOrdering] = useState('-date')
@@ -21,6 +194,17 @@ export default function InstagramDashboardPage() {
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
   const pageStart = (currentPage - 1) * pageSize
   const pageRows = rows.slice(pageStart, pageStart + pageSize)
+
+  const chartSeries = useMemo(
+    () =>
+      (timeseries || []).map((row) => ({
+        date: row.date,
+        impressions: Number(row.impressions || 0),
+        interactions: Number(row.interactions || 0),
+        followers: row.followers === null || row.followers === undefined ? null : Number(row.followers || 0),
+      })),
+    [timeseries],
+  )
 
   const loadAccounts = useCallback(async () => {
     setAccountsLoading(true)
@@ -51,6 +235,7 @@ export default function InstagramDashboardPage() {
         }
 
         const kpisPromise = api.get('/api/instagram/kpis', { params: baseParams })
+        const timeseriesPromise = api.get('/api/instagram/timeseries', { params: baseParams })
         let fetchedTotal = 0
         let fetchedOffset = 0
         let iterations = 0
@@ -76,14 +261,15 @@ export default function InstagramDashboardPage() {
           }
         }
 
-        const kpisRes = await kpisPromise
+        const [kpisRes, timeseriesRes] = await Promise.all([kpisPromise, timeseriesPromise])
         setKpis(kpisRes.data?.kpis || null)
+        setTimeseries(timeseriesRes.data?.timeseries || [])
         setRows(allRows)
         setTableTotal(fetchedTotal)
         setOrdering(resolvedOrdering)
         setCurrentPage(1)
       } catch (error) {
-        logUiError('dashboard-instagram', 'instagram-kpis-media-table', error)
+        logUiError('dashboard-instagram', 'instagram-kpis-timeseries-media-table', error)
         setErrorMsg(error.response?.data?.detail || 'Falha ao carregar dashboard Instagram.')
       } finally {
         setDataLoading(false)
@@ -140,6 +326,7 @@ export default function InstagramDashboardPage() {
             setFilters((prev) => ({ ...prev, instagram_account_id: event.target.value }))
           }
           disabled={accountsLoading}
+          aria-label="Filtro de conta Instagram"
         >
           <option value="">Todas as contas Instagram</option>
           {accounts.map((row) => (
@@ -152,11 +339,13 @@ export default function InstagramDashboardPage() {
           type="date"
           value={filters.date_start}
           onChange={(event) => setFilters((prev) => ({ ...prev, date_start: event.target.value }))}
+          aria-label="Data inicial Instagram"
         />
         <input
           type="date"
           value={filters.date_end}
           onChange={(event) => setFilters((prev) => ({ ...prev, date_end: event.target.value }))}
+          aria-label="Data final Instagram"
         />
       </div>
       <div className="filter-actions">
@@ -166,13 +355,40 @@ export default function InstagramDashboardPage() {
       </div>
 
       {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
-      <div className="instagram-kpis">
-        <div className="mini-kpi">Alcance: {formatNumber(kpis?.alcance)}</div>
-        <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
-        <div className="mini-kpi">Curtidas: {formatNumber(kpis?.curtidas)}</div>
-        <div className="mini-kpi">Comentários: {formatNumber(kpis?.comentarios)}</div>
-        <div className="mini-kpi">Salvos: {formatNumber(kpis?.salvos)}</div>
-        <div className="mini-kpi">Compartilhamentos: {formatNumber(kpis?.compartilhamentos)}</div>
+
+      <div className="chart-and-kpis instagram-overview-grid">
+        <article className="chart-card">
+          <h3>Serie temporal da conta</h3>
+          <div className="chart-legend">
+            <span className="legend-item legend-impressions">Impressões</span>
+            <span className="legend-item legend-interactions">Interações</span>
+            <span className="legend-item legend-followers">Seguidores</span>
+          </div>
+          {chartSeries.length === 0 ? (
+            <div className="chart-placeholder">
+              <strong>Sem série diária disponível.</strong>
+              <span>Sincronize o Instagram e aplique um período com dados para montar o gráfico.</span>
+            </div>
+          ) : (
+            <InstagramTimeseriesChart series={chartSeries} />
+          )}
+        </article>
+
+        <article className="kpis-card">
+          <h3>Resumo do período</h3>
+          <div className="kpi-grid instagram-kpi-grid">
+            <div className="mini-kpi">Alcance: {formatNumber(kpis?.alcance)}</div>
+            <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
+            <div className="mini-kpi">Interações: {formatNumber(kpis?.interacoes)}</div>
+            <div className="mini-kpi">Seguidores: {formatNumber(kpis?.seguidores)}</div>
+            <div className="mini-kpi">Curtidas: {formatNumber(kpis?.curtidas)}</div>
+            <div className="mini-kpi">Comentários: {formatNumber(kpis?.comentarios)}</div>
+            <div className="mini-kpi">Salvos: {formatNumber(kpis?.salvos)}</div>
+            <div className="mini-kpi">Compartilhamentos: {formatNumber(kpis?.compartilhamentos)}</div>
+            <div className="mini-kpi">Plays: {formatNumber(kpis?.plays)}</div>
+            <div className="mini-kpi">Visitas ao perfil: {formatNumber(kpis?.profile_views)}</div>
+          </div>
+        </article>
       </div>
 
       <div className="table-wrapper">

@@ -79,7 +79,7 @@ const SYNC_STAGE_DEFINITIONS = {
     label: 'Instagram Insights',
     icon: 'fa-chart-column',
     entities: ['instagram_account_insights'],
-    messageTokens: ['instagram_accounts_with_insights'],
+    messageTokens: ['instagram_accounts_with_insights', 'instagram_account_daily_insights_upserted'],
   },
   media: {
     id: 'media',

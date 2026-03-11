@@ -1146,6 +1146,14 @@
   color: #7e22ce;
 }
 
+.legend-interactions {
+  color: #0f766e;
+}
+
+.legend-followers {
+  color: #b45309;
+}
+
 .chart-placeholder {
   border: 2px dashed #6e95cf;
   border-radius: 8px;
@@ -1184,6 +1192,10 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
+}
+
+.instagram-overview-grid {
+  margin-top: 1rem;
 }
 
 .meta-sync-1d-panel {
