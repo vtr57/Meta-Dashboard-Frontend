@@ -138,7 +138,7 @@ function InstagramTimeseriesChart({ series }) {
         },
         plugins: {
           legend: {
-            display: false,
+            display: true,
             labels: {
               color: '#173a67',
               font: {
