@@ -1177,6 +1177,12 @@
   overflow: hidden;
 }
 
+.instagram-chart-wrapper {
+  flex: 0 0 auto;
+  height: 360px;
+  min-height: 360px;
+}
+
 .chartjs-canvas {
   width: 100% !important;
   height: 100% !important;
@@ -1922,6 +1928,11 @@
 
   .chart-wrapper {
     height: clamp(260px, 72vw, 360px);
+  }
+
+  .instagram-chart-wrapper {
+    height: 320px;
+    min-height: 320px;
   }
 
   .meta-specific-chart-wrapper {

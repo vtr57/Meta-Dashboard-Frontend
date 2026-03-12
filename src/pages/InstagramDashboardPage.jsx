@@ -3,7 +3,6 @@ import Chart from 'chart.js/auto'
 import api from '../lib/api'
 import {
   daysAgo,
-  formatDate,
   formatDateTime,
   formatNumber,
   logUiError,
@@ -64,22 +63,28 @@ function computeInstagramSyncProgress(syncRun, logs) {
   return Math.min(95, Math.max(8, Math.round(rawProgress)))
 }
 
-function computeFollowersGainedInPeriod(series) {
-  let previousFollowerCount = null
-  let gainedFollowers = 0
-
+function extractFollowerCounts(series) {
+  const counts = []
   for (const row of series || []) {
     const followerCount = row?.follower_count
     if (followerCount === null || followerCount === undefined || !Number.isFinite(followerCount)) {
       continue
     }
-    if (previousFollowerCount !== null && followerCount > previousFollowerCount) {
-      gainedFollowers += followerCount - previousFollowerCount
-    }
-    previousFollowerCount = followerCount
+    counts.push(followerCount)
   }
+  return counts
+}
 
-  return gainedFollowers
+function computeCurrentFollowers(series, fallbackValue = 0) {
+  const counts = extractFollowerCounts(series)
+  if (counts.length === 0) return Number(fallbackValue || 0)
+  return counts[counts.length - 1]
+}
+
+function computeFollowersInPeriod(series) {
+  const counts = extractFollowerCounts(series)
+  if (counts.length === 0) return 0
+  return counts[counts.length - 1] - counts[0]
 }
 
 function InstagramTimeseriesChart({ series }) {
@@ -114,16 +119,6 @@ function InstagramTimeseriesChart({ series }) {
       data: {
         labels: series.map((row) => row.date),
         datasets: [
-          {
-            label: 'Impressões',
-            data: series.map((row) => toNumber(row.impressions)),
-            yAxisID: 'yLeft',
-            borderColor: '#1d4ed8',
-            backgroundColor: '#1d4ed8',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.2,
-          },
           {
             label: 'Alcance',
             data: series.map((row) => toNumber(row.reach)),
@@ -172,7 +167,7 @@ function InstagramTimeseriesChart({ series }) {
             borderColor: '#9cb8e2',
             borderWidth: 1,
             callbacks: {
-              title: (items) => formatDate(items[0]?.label),
+              title: (items) => items[0]?.label || '',
             },
           },
         },
@@ -180,7 +175,7 @@ function InstagramTimeseriesChart({ series }) {
           x: {
             ticks: {
               color: '#173a67',
-              callback: (_, index) => formatDate(series[index]?.date),
+              callback: (_, index) => series[index]?.date || '',
             },
             grid: {
               color: '#bdd0ef',
@@ -198,7 +193,7 @@ function InstagramTimeseriesChart({ series }) {
             },
             title: {
               display: true,
-              text: 'Impressões / Alcance',
+              text: 'Alcance',
               color: '#173a67',
               font: {
                 size: 12,
@@ -240,7 +235,7 @@ function InstagramTimeseriesChart({ series }) {
   }, [series])
 
   return (
-    <div className="chart-wrapper">
+    <div className="chart-wrapper instagram-chart-wrapper">
       <canvas ref={canvasRef} className="chartjs-canvas" aria-label="Grafico temporal do Instagram" />
     </div>
   )
@@ -280,7 +275,6 @@ export default function InstagramDashboardPage() {
     () =>
       (timeseries || []).map((row) => ({
         date: row.date,
-        impressions: Number(row.impressions || 0),
         reach: Number(row.reach || 0),
         follower_count:
           row.follower_count === null || row.follower_count === undefined
@@ -289,7 +283,11 @@ export default function InstagramDashboardPage() {
       })),
     [timeseries],
   )
-  const followersGainedInPeriod = useMemo(() => computeFollowersGainedInPeriod(chartSeries), [chartSeries])
+  const currentFollowers = useMemo(
+    () => computeCurrentFollowers(chartSeries, kpis?.seguidores_atuais),
+    [chartSeries, kpis?.seguidores_atuais],
+  )
+  const followersInPeriod = useMemo(() => computeFollowersInPeriod(chartSeries), [chartSeries])
 
   const loadAccounts = useCallback(async () => {
     setAccountsLoading(true)
@@ -579,8 +577,8 @@ export default function InstagramDashboardPage() {
             <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
             <div className="mini-kpi">Contas engajadas: {formatNumber(kpis?.contas_engajadas)}</div>
             <div className="mini-kpi">Total de interações: {formatNumber(kpis?.total_interacoes)}</div>
-            <div className="mini-kpi">Seguidores atuais: {formatNumber(kpis?.seguidores_atuais)}</div>
-            <div className="mini-kpi">Seguidores ganhos no período: {formatNumber(followersGainedInPeriod)}</div>
+            <div className="mini-kpi">Seguidores atuais: {formatNumber(currentFollowers)}</div>
+            <div className="mini-kpi">Seguidores do período: {formatNumber(followersInPeriod)}</div>
           </div>
         </article>
       </div>
