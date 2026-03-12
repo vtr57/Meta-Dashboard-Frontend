@@ -564,9 +564,6 @@ export default function InstagramDashboardPage() {
           </div>
           <div className="kpi-grid instagram-kpi-grid">
             <div className="mini-kpi">Alcance: {formatNumber(kpis?.alcance)}</div>
-            <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
-            <div className="mini-kpi">Contas engajadas: {formatNumber(kpis?.contas_engajadas)}</div>
-            <div className="mini-kpi">Total de interações: {formatNumber(kpis?.total_interacoes)}</div>
             <div className="mini-kpi">Seguidores atuais: {formatNumber(kpis?.seguidores_atuais)}</div>
             <div className="mini-kpi">Seguidores do período: {formatNumber(followersInPeriod)}</div>
           </div>

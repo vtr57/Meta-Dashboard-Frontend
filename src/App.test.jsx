@@ -330,9 +330,6 @@ describe('App frontend flows', () => {
           data: {
             kpis: {
               alcance: 1000,
-              impressoes: 4000,
-              contas_engajadas: 320,
-              total_interacoes: 780,
               seguidores_atuais: 2200,
             },
           },
@@ -418,8 +415,9 @@ describe('App frontend flows', () => {
     expect(await screen.findByRole('heading', { name: 'Dashboard Instagram' })).toBeInTheDocument()
 
     expect(await screen.findByText(/Alcance: 1.000/)).toBeInTheDocument()
-    expect(screen.getByText(/Contas engajadas: 320/)).toBeInTheDocument()
-    expect(screen.getByText(/Total de interações: 780/)).toBeInTheDocument()
+    expect(screen.queryByText(/Contas engajadas:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Total de interações:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Impressões:/)).not.toBeInTheDocument()
     expect(screen.getByText(/Seguidores atuais: 2.200/)).toBeInTheDocument()
     expect(screen.getByText(/Seguidores do período: 5/)).toBeInTheDocument()
     expect(screen.getByText('Serie temporal da conta')).toBeInTheDocument()
