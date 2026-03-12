@@ -64,6 +64,24 @@ function computeInstagramSyncProgress(syncRun, logs) {
   return Math.min(95, Math.max(8, Math.round(rawProgress)))
 }
 
+function computeFollowersGainedInPeriod(series) {
+  let previousFollowerCount = null
+  let gainedFollowers = 0
+
+  for (const row of series || []) {
+    const followerCount = row?.follower_count
+    if (followerCount === null || followerCount === undefined || !Number.isFinite(followerCount)) {
+      continue
+    }
+    if (previousFollowerCount !== null && followerCount > previousFollowerCount) {
+      gainedFollowers += followerCount - previousFollowerCount
+    }
+    previousFollowerCount = followerCount
+  }
+
+  return gainedFollowers
+}
+
 function InstagramTimeseriesChart({ series }) {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
@@ -271,6 +289,7 @@ export default function InstagramDashboardPage() {
       })),
     [timeseries],
   )
+  const followersGainedInPeriod = useMemo(() => computeFollowersGainedInPeriod(chartSeries), [chartSeries])
 
   const loadAccounts = useCallback(async () => {
     setAccountsLoading(true)
@@ -561,6 +580,7 @@ export default function InstagramDashboardPage() {
             <div className="mini-kpi">Contas engajadas: {formatNumber(kpis?.contas_engajadas)}</div>
             <div className="mini-kpi">Total de interações: {formatNumber(kpis?.total_interacoes)}</div>
             <div className="mini-kpi">Seguidores atuais: {formatNumber(kpis?.seguidores_atuais)}</div>
+            <div className="mini-kpi">Seguidores ganhos no período: {formatNumber(followersGainedInPeriod)}</div>
           </div>
         </article>
       </div>
