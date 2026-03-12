@@ -419,7 +419,7 @@ describe('App frontend flows', () => {
     expect(screen.queryByText(/Total de interações:/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Impressões:/)).not.toBeInTheDocument()
     expect(screen.getByText(/Seguidores atuais: 2.200/)).toBeInTheDocument()
-    expect(screen.getByText(/Seguidores do período: 5/)).toBeInTheDocument()
+    expect(screen.getByText(/Seguidores do período: 4\.385/)).toBeInTheDocument()
     expect(screen.getByText('Serie temporal da conta')).toBeInTheDocument()
     expect(screen.getByText('Post de teste')).toBeInTheDocument()
 

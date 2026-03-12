@@ -78,7 +78,7 @@ function extractFollowerCounts(series) {
 function computeFollowersInPeriod(series) {
   const counts = extractFollowerCounts(series)
   if (counts.length === 0) return 0
-  return counts[counts.length - 1] - counts[0]
+  return counts.reduce((total, value) => total + value, 0)
 }
 
 function InstagramTimeseriesChart({ series }) {
