@@ -75,12 +75,6 @@ function extractFollowerCounts(series) {
   return counts
 }
 
-function computeCurrentFollowers(series, fallbackValue = 0) {
-  const counts = extractFollowerCounts(series)
-  if (counts.length === 0) return Number(fallbackValue || 0)
-  return counts[counts.length - 1]
-}
-
 function computeFollowersInPeriod(series) {
   const counts = extractFollowerCounts(series)
   if (counts.length === 0) return 0
@@ -282,10 +276,6 @@ export default function InstagramDashboardPage() {
             : Number(row.follower_count || 0),
       })),
     [timeseries],
-  )
-  const currentFollowers = useMemo(
-    () => computeCurrentFollowers(chartSeries, kpis?.seguidores_atuais),
-    [chartSeries, kpis?.seguidores_atuais],
   )
   const followersInPeriod = useMemo(() => computeFollowersInPeriod(chartSeries), [chartSeries])
 
@@ -577,7 +567,7 @@ export default function InstagramDashboardPage() {
             <div className="mini-kpi">Impressões: {formatNumber(kpis?.impressoes)}</div>
             <div className="mini-kpi">Contas engajadas: {formatNumber(kpis?.contas_engajadas)}</div>
             <div className="mini-kpi">Total de interações: {formatNumber(kpis?.total_interacoes)}</div>
-            <div className="mini-kpi">Seguidores atuais: {formatNumber(currentFollowers)}</div>
+            <div className="mini-kpi">Seguidores atuais: {formatNumber(kpis?.seguidores_atuais)}</div>
             <div className="mini-kpi">Seguidores do período: {formatNumber(followersInPeriod)}</div>
           </div>
         </article>
