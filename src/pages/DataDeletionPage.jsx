@@ -12,7 +12,8 @@ export default function DataDeletionPage() {
         <h2>1. Como solicitar a exclusao</h2>
         <p>Voce pode solicitar a exclusao de dados por um dos canais abaixo:</p>
         <ul>
-          <li>E-mail: vitortramontin@gmail.com</li>
+          <li>Telefone comercial: +5542999400084</li>
+          <li>Site: https://vincita.lovable.app/</li>
           <li>Solicitacao direta ao administrador da conta no sistema</li>
         </ul>
 
@@ -42,9 +43,14 @@ export default function DataDeletionPage() {
         </p>
 
         <h2>6. Contato</h2>
-        <p>
-          Em caso de duvidas sobre exclusao de dados: <strong>vitortramontin@gmail.com</strong>
-        </p>
+        <p>Em caso de duvidas sobre exclusao de dados, fale conosco:</p>
+        <ul>
+          <li>Razao social: VINCITA ASSESSORIA DE TRAFEGO PAGO E VENDAS LTDA</li>
+          <li>CNPJ: 53.522.356/0001-51</li>
+          <li>Endereco: RUA SETE DE SETEMBRO 358, CENTRO, PONTA GROSSA, Parana 84010-350, Brasil</li>
+          <li>Telefone comercial: +5542999400084</li>
+          <li>Site: https://vincita.lovable.app/</li>
+        </ul>
       </article>
     </main>
   )
