@@ -13,19 +13,22 @@ export default function PrivacyPolicyPage() {
 
         <h2>1. Quem somos (Controlador)</h2>
         <p>
-          <strong>Controlador dos dados:</strong> Vitor Marques Tramontin Silveira
+          <strong>Controlador dos dados:</strong> VINCITA ASSESSORIA DE TRAFEGO PAGO E VENDAS LTDA
         </p>
         <p>
-          <strong>CNPJ/CPF:</strong> 09646268960
+          <strong>Razao social da empresa:</strong> VINCITA ASSESSORIA DE TRAFEGO PAGO E VENDAS LTDA
         </p>
         <p>
-          <strong>Endereco:</strong> Ary Lievore, 250, Ponta Grossa, Brasil
+          <strong>CNPJ:</strong> 53.522.356/0001-51
         </p>
         <p>
-          <strong>E-mail de contato (privacidade):</strong> vitortramontin@gmail.com
+          <strong>Endereco:</strong> RUA SETE DE SETEMBRO 358, CENTRO, PONTA GROSSA, Parana 84010-350, Brasil
         </p>
         <p>
-          <strong>Encarregado (DPO), se aplicavel:</strong> Vitor Marques Tramontin Silveira +5542999770702
+          <strong>Telefone comercial:</strong> +5542999400084
+        </p>
+        <p>
+          <strong>Site:</strong> https://vincita.lovable.app/
         </p>
 
         <h2>2. Quais dados coletamos</h2>
@@ -141,7 +144,7 @@ export default function PrivacyPolicyPage() {
           <li>Revogacao de consentimento, quando o tratamento depender dele</li>
         </ul>
         <p>
-          Para exercer seus direitos, entre em contato em: <strong>vitortramontin@gmail.com</strong>.
+          Para exercer seus direitos, utilize os canais informados na secao 13 (Contato).
         </p>
 
         <h2>10. Comunicacoes e notificacoes</h2>
@@ -171,10 +174,19 @@ export default function PrivacyPolicyPage() {
         <p>Em caso de duvidas ou solicitacoes sobre privacidade, fale conosco:</p>
         <ul>
           <li>
-            <strong>E-mail:</strong> vitortramontin@gmail.com
+            <strong>Razao social:</strong> VINCITA ASSESSORIA DE TRAFEGO PAGO E VENDAS LTDA
           </li>
           <li>
-            <strong>Endereco:</strong> Ary Lievore, 250, Ponta Grossa, Brasil
+            <strong>CNPJ:</strong> 53.522.356/0001-51
+          </li>
+          <li>
+            <strong>Endereco:</strong> RUA SETE DE SETEMBRO 358, CENTRO, PONTA GROSSA, Parana 84010-350, Brasil
+          </li>
+          <li>
+            <strong>Telefone comercial:</strong> +5542999400084
+          </li>
+          <li>
+            <strong>Site:</strong> https://vincita.lovable.app/
           </li>
         </ul>
       </article>
