@@ -172,11 +172,15 @@ function MetaTimeseriesChart({ series }) {
           {
             label: 'CPR',
             data: series.map((row) => toCpr(row)),
-            yAxisID: 'yRight',
+            yAxisID: 'yLeft',
             borderColor: '#eab308',
             backgroundColor: '#eab308',
             borderWidth: 2,
-            pointRadius: 0,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#eab308',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 1.5,
             tension: 0,
             spanGaps: true,
           },
@@ -228,7 +232,7 @@ function MetaTimeseriesChart({ series }) {
             },
             title: {
               display: true,
-              text: 'Alcance / Impressões',
+              text: 'Alcance / Impressões / CPR',
               color: '#173a67',
               font: {
                 size: 12,
@@ -249,7 +253,7 @@ function MetaTimeseriesChart({ series }) {
             },
             title: {
               display: true,
-              text: 'Gasto / Results / CPR',
+              text: 'Gasto / Results',
               color: '#173a67',
               font: {
                 size: 12,
@@ -954,8 +958,8 @@ export default function MetaDashboardPage() {
               ) : series.length === 0 ? (
                 <div className="chart-placeholder">
                   <div className="axis-text">Sem dados para os filtros selecionados.</div>
-                  <div className="axis-text">Eixo esquerdo: alcance / impressoes</div>
-                  <div className="axis-text">Eixo direito: gasto / results / CPR</div>
+                  <div className="axis-text">Eixo esquerdo: alcance / impressoes / CPR</div>
+                  <div className="axis-text">Eixo direito: gasto / results</div>
                 </div>
               ) : (
                 <MetaTimeseriesChart series={chartSeries} />
