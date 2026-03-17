@@ -113,6 +113,17 @@ function MetaTimeseriesChart({ series }) {
     }
 
     const toNumber = (value) => Number(value || 0)
+    const toNullableNumber = (value) => {
+      if (value === null || value === undefined) return null
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+    const toCpr = (row) => {
+      const spend = toNullableNumber(row?.spend)
+      const results = toNullableNumber(row?.results)
+      if (spend === null || results === null || results <= 0) return null
+      return spend / results
+    }
     chartRef.current = new Chart(context, {
       type: 'line',
       data: {
@@ -157,6 +168,17 @@ function MetaTimeseriesChart({ series }) {
             borderWidth: 2,
             pointRadius: 0,
             tension: 0,
+          },
+          {
+            label: 'CPR',
+            data: series.map((row) => toCpr(row)),
+            yAxisID: 'yRight',
+            borderColor: '#eab308',
+            backgroundColor: '#eab308',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0,
+            spanGaps: true,
           },
         ],
       },
@@ -227,7 +249,7 @@ function MetaTimeseriesChart({ series }) {
             },
             title: {
               display: true,
-              text: 'Gasto / Results',
+              text: 'Gasto / Results / CPR',
               color: '#173a67',
               font: {
                 size: 12,
@@ -933,7 +955,7 @@ export default function MetaDashboardPage() {
                 <div className="chart-placeholder">
                   <div className="axis-text">Sem dados para os filtros selecionados.</div>
                   <div className="axis-text">Eixo esquerdo: alcance / impressoes</div>
-                  <div className="axis-text">Eixo direito: gasto / results</div>
+                  <div className="axis-text">Eixo direito: gasto / results / CPR</div>
                 </div>
               ) : (
                 <MetaTimeseriesChart series={chartSeries} />
