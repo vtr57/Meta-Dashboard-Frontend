@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
 import { formatDate, formatDecimal, formatNumber, logUiError, toInputDate } from './pageUtils'
 
@@ -424,12 +424,14 @@ export function ClientesEstadoPage() {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
+  const [activeDropZone, setActiveDropZone] = useState(null)
   const [savingMoveId, setSavingMoveId] = useState(null)
   const [editingDescriptionId, setEditingDescriptionId] = useState(null)
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [savingDescriptionId, setSavingDescriptionId] = useState(null)
   const [feedback, setFeedback] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const dragScrollFrameRef = useRef(null)
 
   const loadClientesEstado = useCallback(async () => {
     setLoading(true)
@@ -525,16 +527,82 @@ export function ClientesEstadoPage() {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', String(clienteId))
     setDraggingId(clienteId)
+    setActiveDropZone(null)
     setFeedback('')
     setErrorMsg('')
   }
 
   const handleDragEnd = () => {
     setDraggingId(null)
+    setActiveDropZone(null)
+    if (dragScrollFrameRef.current !== null) {
+      cancelAnimationFrame(dragScrollFrameRef.current)
+      dragScrollFrameRef.current = null
+    }
+  }
+
+  const handleColumnDragOver = (event, estado) => {
+    event.preventDefault()
+    if (draggingId === null) return
+
+    if (activeDropZone !== estado) {
+      setActiveDropZone(estado)
+    }
+
+    if (dragScrollFrameRef.current !== null) {
+      return
+    }
+
+    const viewportMargin = 120
+    const maxWindowStep = 26
+    const maxColumnStep = 18
+    const pointerY = event.clientY
+    const currentTarget = event.currentTarget
+
+    dragScrollFrameRef.current = requestAnimationFrame(() => {
+      dragScrollFrameRef.current = null
+
+      const viewportHeight = window.innerHeight || 0
+      let windowDelta = 0
+
+      if (pointerY < viewportMargin) {
+        windowDelta = -Math.ceil(((viewportMargin - pointerY) / viewportMargin) * maxWindowStep)
+      } else if (pointerY > viewportHeight - viewportMargin) {
+        windowDelta = Math.ceil(
+          ((pointerY - (viewportHeight - viewportMargin)) / viewportMargin) * maxWindowStep,
+        )
+      }
+
+      if (windowDelta !== 0) {
+        window.scrollBy({ top: windowDelta, behavior: 'auto' })
+      }
+
+      if (!(currentTarget instanceof HTMLElement)) {
+        return
+      }
+
+      const rect = currentTarget.getBoundingClientRect()
+      let columnDelta = 0
+
+      if (pointerY < rect.top + viewportMargin) {
+        columnDelta = -Math.ceil(
+          ((rect.top + viewportMargin - pointerY) / viewportMargin) * maxColumnStep,
+        )
+      } else if (pointerY > rect.bottom - viewportMargin) {
+        columnDelta = Math.ceil(
+          ((pointerY - (rect.bottom - viewportMargin)) / viewportMargin) * maxColumnStep,
+        )
+      }
+
+      if (columnDelta !== 0) {
+        currentTarget.scrollBy({ top: columnDelta, behavior: 'auto' })
+      }
+    })
   }
 
   const handleDropOnColumn = async (event, nextEstado) => {
     event.preventDefault()
+    setActiveDropZone(null)
     const draggedClienteId = Number(event.dataTransfer.getData('text/plain') || draggingId)
     if (!Number.isFinite(draggedClienteId)) {
       setDraggingId(null)
@@ -567,6 +635,15 @@ export function ClientesEstadoPage() {
       setDraggingId(null)
     }
   }
+
+  useEffect(
+    () => () => {
+      if (dragScrollFrameRef.current !== null) {
+        cancelAnimationFrame(dragScrollFrameRef.current)
+      }
+    },
+    [],
+  )
 
   return (
     <section className="view-card clientes-view clientes-estado-view">
@@ -602,8 +679,16 @@ export function ClientesEstadoPage() {
           return (
             <section
               key={column.key}
-              className={`clientes-kanban-column ${column.toneClass}`}
-              onDragOver={(event) => event.preventDefault()}
+              className={`clientes-kanban-column ${column.toneClass} ${
+                activeDropZone === column.key ? 'is-drop-target' : ''
+              }`}
+              onDragOver={(event) => handleColumnDragOver(event, column.key)}
+              onDragEnter={() => setActiveDropZone(column.key)}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setActiveDropZone((prev) => (prev === column.key ? null : prev))
+                }
+              }}
               onDrop={(event) => handleDropOnColumn(event, column.key)}
             >
               <header className="clientes-kanban-column-header">
