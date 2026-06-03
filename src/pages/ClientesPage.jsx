@@ -4,6 +4,29 @@ import { formatDate, formatDecimal, formatNumber, logUiError, toInputDate } from
 
 const FORMA_PAGAMENTO_OPTIONS = ['PIX', 'CARTAO CREDITO']
 const PERIODO_COBRANCA_OPTIONS = ['SEMANAL', 'MENSAL']
+const ESTADO_CLIENTE_COLUMNS = [
+  {
+    key: 'MAU',
+    title: 'Mau',
+    icon: 'fa-solid fa-triangle-exclamation',
+    toneClass: 'danger',
+    emptyMessage: 'Nenhum cliente em estado mau.',
+  },
+  {
+    key: 'REGULAR',
+    title: 'Regular',
+    icon: 'fa-solid fa-wave-square',
+    toneClass: 'info',
+    emptyMessage: 'Nenhum cliente em estado regular.',
+  },
+  {
+    key: 'BOM',
+    title: 'Bom',
+    icon: 'fa-solid fa-circle-check',
+    toneClass: 'success',
+    emptyMessage: 'Nenhum cliente em estado bom.',
+  },
+]
 
 function toLocalDate(value) {
   const raw = String(value || '').slice(0, 10)
@@ -393,6 +416,288 @@ export function ClientesCadastrarPage() {
         <p className="hint-warning">Nenhum AdAccount disponivel para cadastro.</p>
       ) : null}
       {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
+    </section>
+  )
+}
+
+export function ClientesEstadoPage() {
+  const [clientes, setClientes] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [draggingId, setDraggingId] = useState(null)
+  const [savingMoveId, setSavingMoveId] = useState(null)
+  const [editingDescriptionId, setEditingDescriptionId] = useState(null)
+  const [descriptionDraft, setDescriptionDraft] = useState('')
+  const [savingDescriptionId, setSavingDescriptionId] = useState(null)
+  const [feedback, setFeedback] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const loadClientesEstado = useCallback(async () => {
+    setLoading(true)
+    setErrorMsg('')
+    try {
+      const response = await api.get('/api/empresa/clientes')
+      setClientes(response.data?.clientes || [])
+    } catch (error) {
+      logUiError('clientes-estado', 'empresa-clientes-get', error)
+      setErrorMsg(error.response?.data?.detail || 'Falha ao carregar estado dos clientes.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadClientesEstado()
+  }, [loadClientesEstado])
+
+  const clientesPorEstado = useMemo(() => {
+    const grouped = ESTADO_CLIENTE_COLUMNS.reduce((acc, column) => {
+      acc[column.key] = []
+      return acc
+    }, {})
+
+    clientes.forEach((cliente) => {
+      const resolvedEstado = ESTADO_CLIENTE_COLUMNS.some((column) => column.key === cliente.estado)
+        ? cliente.estado
+        : 'REGULAR'
+      grouped[resolvedEstado].push(cliente)
+    })
+
+    return grouped
+  }, [clientes])
+
+  const resumoEstado = useMemo(
+    () =>
+      ESTADO_CLIENTE_COLUMNS.map((column) => ({
+        ...column,
+        count: clientesPorEstado[column.key]?.length || 0,
+      })),
+    [clientesPorEstado],
+  )
+
+  const handleStartDescriptionEdit = (cliente) => {
+    setEditingDescriptionId(cliente.id)
+    setDescriptionDraft(cliente.descricao_estado || '')
+    setErrorMsg('')
+    setFeedback('')
+  }
+
+  const handleCancelDescriptionEdit = () => {
+    setEditingDescriptionId(null)
+    setDescriptionDraft('')
+  }
+
+  const handleSaveDescription = async (clienteId) => {
+    setSavingDescriptionId(clienteId)
+    setErrorMsg('')
+    setFeedback('')
+    try {
+      const response = await api.patch(`/api/empresa/clientes/${clienteId}`, {
+        descricao_estado: descriptionDraft,
+      })
+      const updatedCliente = response.data?.cliente
+      if (updatedCliente) {
+        setClientes((prev) => prev.map((row) => (row.id === updatedCliente.id ? updatedCliente : row)))
+      }
+      setFeedback('Descricao do cliente atualizada com sucesso.')
+      handleCancelDescriptionEdit()
+    } catch (error) {
+      logUiError('clientes-estado', 'empresa-cliente-descricao-patch', error)
+      setErrorMsg(error.response?.data?.detail || 'Falha ao salvar descricao do cliente.')
+    } finally {
+      setSavingDescriptionId(null)
+    }
+  }
+
+  const handleDescriptionKeyDown = async (event, clienteId) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      if (savingDescriptionId !== clienteId) {
+        await handleSaveDescription(clienteId)
+      }
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      handleCancelDescriptionEdit()
+    }
+  }
+
+  const handleDragStart = (event, clienteId) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(clienteId))
+    setDraggingId(clienteId)
+    setFeedback('')
+    setErrorMsg('')
+  }
+
+  const handleDragEnd = () => {
+    setDraggingId(null)
+  }
+
+  const handleDropOnColumn = async (event, nextEstado) => {
+    event.preventDefault()
+    const draggedClienteId = Number(event.dataTransfer.getData('text/plain') || draggingId)
+    if (!Number.isFinite(draggedClienteId)) {
+      setDraggingId(null)
+      return
+    }
+
+    const currentCliente = clientes.find((row) => row.id === draggedClienteId)
+    if (!currentCliente || currentCliente.estado === nextEstado) {
+      setDraggingId(null)
+      return
+    }
+
+    setSavingMoveId(draggedClienteId)
+    setErrorMsg('')
+    setFeedback('')
+    try {
+      const response = await api.patch(`/api/empresa/clientes/${draggedClienteId}`, {
+        estado: nextEstado,
+      })
+      const updatedCliente = response.data?.cliente
+      if (updatedCliente) {
+        setClientes((prev) => prev.map((row) => (row.id === updatedCliente.id ? updatedCliente : row)))
+      }
+      setFeedback(`Cliente movido para ${nextEstado.toLowerCase()}.`)
+    } catch (error) {
+      logUiError('clientes-estado', 'empresa-cliente-estado-patch', error)
+      setErrorMsg(error.response?.data?.detail || 'Falha ao mover cliente entre estados.')
+    } finally {
+      setSavingMoveId(null)
+      setDraggingId(null)
+    }
+  }
+
+  return (
+    <section className="view-card clientes-view clientes-estado-view">
+      <p className="clientes-breadcrumb">Clientes &gt; Estado</p>
+      <div className="clientes-estado-header">
+        <div>
+          <h2>Clientes / Estado</h2>
+          <p className="view-description">
+            Organize a carteira por percepcao de saude do cliente e mantenha uma descricao rapida por card.
+          </p>
+        </div>
+        <button type="button" className="primary-btn" onClick={loadClientesEstado} disabled={loading}>
+          {loading ? 'Atualizando...' : 'Atualizar kanban'}
+        </button>
+      </div>
+
+      <div className="clientes-estado-summary">
+        {resumoEstado.map((column) => (
+          <article key={column.key} className={`clientes-estado-summary-card ${column.toneClass}`}>
+            <span className="clientes-estado-summary-label">{column.title}</span>
+            <strong className="clientes-estado-summary-value">{formatNumber(column.count)}</strong>
+          </article>
+        ))}
+      </div>
+
+      {feedback ? <p className="hint-ok">{feedback}</p> : null}
+      {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
+      {loading ? <p className="hint-neutral">Carregando clientes...</p> : null}
+
+      <div className="clientes-kanban-grid">
+        {ESTADO_CLIENTE_COLUMNS.map((column) => {
+          const rows = clientesPorEstado[column.key] || []
+          return (
+            <section
+              key={column.key}
+              className={`clientes-kanban-column ${column.toneClass}`}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => handleDropOnColumn(event, column.key)}
+            >
+              <header className="clientes-kanban-column-header">
+                <div className="clientes-kanban-column-title">
+                  <i className={column.icon} aria-hidden="true" />
+                  <div>
+                    <h3>{column.title}</h3>
+                    <p>{formatNumber(rows.length)} cliente(s)</p>
+                  </div>
+                </div>
+              </header>
+
+              <div className="clientes-kanban-card-list">
+                {rows.length === 0 ? (
+                  <div className="clientes-kanban-empty">
+                    <p>{column.emptyMessage}</p>
+                  </div>
+                ) : (
+                  rows.map((cliente) => {
+                    const isEditingDescription = editingDescriptionId === cliente.id
+                    const isSavingDescription = savingDescriptionId === cliente.id
+                    const isSavingMove = savingMoveId === cliente.id
+
+                    return (
+                      <article
+                        key={cliente.id}
+                        className={`clientes-kanban-card ${
+                          draggingId === cliente.id ? 'is-dragging' : ''
+                        } ${isSavingMove ? 'is-saving' : ''}`}
+                        draggable={!isSavingDescription}
+                        onDragStart={(event) => handleDragStart(event, cliente.id)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <div className="clientes-kanban-card-top">
+                          <div>
+                            <h4>{cliente.name || 'Cliente sem nome'}</h4>
+                            <p className="clientes-kanban-card-account">{cliente.nome || 'AdAccount indisponivel'}</p>
+                          </div>
+                          <span className="clientes-kanban-card-handle" aria-hidden="true">
+                            <i className="fa-solid fa-grip-vertical" />
+                          </span>
+                        </div>
+
+                        <div className="clientes-kanban-card-meta">
+                          <span>
+                            <i className="fa-solid fa-hashtag" aria-hidden="true" /> ID {cliente.id_meta_ad_account}
+                          </span>
+                          <span>
+                            <i className="fa-solid fa-layer-group" aria-hidden="true" />{' '}
+                            {cliente.nicho_atuacao || 'Sem nicho'}
+                          </span>
+                        </div>
+
+                        <div className="clientes-kanban-description-block">
+                          <span className="clientes-kanban-description-label">Descricao</span>
+                          {isEditingDescription ? (
+                            <input
+                              className="clientes-kanban-description-input"
+                              type="text"
+                              value={descriptionDraft}
+                              onChange={(event) => setDescriptionDraft(event.target.value)}
+                              onKeyDown={(event) => handleDescriptionKeyDown(event, cliente.id)}
+                              onBlur={handleCancelDescriptionEdit}
+                              autoFocus
+                              disabled={isSavingDescription}
+                              placeholder="Digite uma descricao e pressione Enter"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="clientes-kanban-description-button"
+                              onClick={() => handleStartDescriptionEdit(cliente)}
+                            >
+                              {cliente.descricao_estado?.trim()
+                                ? cliente.descricao_estado
+                                : 'Clique para adicionar uma descricao'}
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="clientes-kanban-card-footer">
+                          <span>{formatDate(cliente.data_renovacao_creditos)}</span>
+                          {isSavingMove ? <small>Salvando movimento...</small> : null}
+                          {isSavingDescription ? <small>Salvando descricao...</small> : null}
+                        </div>
+                      </article>
+                    )
+                  })
+                )}
+              </div>
+            </section>
+          )
+        })}
+      </div>
     </section>
   )
 }

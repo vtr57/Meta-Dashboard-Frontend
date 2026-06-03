@@ -6,6 +6,7 @@ vi.mock('./lib/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     delete: vi.fn(),
+    patch: vi.fn(),
   },
   setCsrfToken: vi.fn(),
 }))
@@ -21,6 +22,67 @@ describe('App frontend flows', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setRoute('/login')
+  })
+
+  it('renders clientes estado kanban grouped by status', async () => {
+    setRoute('/app/clientes/estado')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 40, username: 'estado-user' } } })
+      }
+      if (url === '/api/empresa/clientes') {
+        return Promise.resolve({
+          data: {
+            clientes: [
+              {
+                id: 1,
+                name: 'Cliente Critico',
+                nome: 'Conta A',
+                id_meta_ad_account: 'act_1',
+                nicho_atuacao: 'Servico',
+                data_renovacao_creditos: '2026-02-10',
+                estado: 'MAU',
+                descricao_estado: 'Precisa de atencao',
+              },
+              {
+                id: 2,
+                name: 'Cliente Estavel',
+                nome: 'Conta B',
+                id_meta_ad_account: 'act_2',
+                nicho_atuacao: 'Ecommerce',
+                data_renovacao_creditos: '2026-02-12',
+                estado: 'REGULAR',
+                descricao_estado: '',
+              },
+              {
+                id: 3,
+                name: 'Cliente Saudavel',
+                nome: 'Conta C',
+                id_meta_ad_account: 'act_3',
+                nicho_atuacao: 'Educacao',
+                data_renovacao_creditos: '2026-02-15',
+                estado: 'BOM',
+                descricao_estado: 'Fluxo em dia',
+              },
+            ],
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Clientes / Estado' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Mau' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Regular' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Bom' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Cliente Critico')).toBeInTheDocument()
+      expect(screen.getByText('Cliente Estavel')).toBeInTheDocument()
+      expect(screen.getByText('Cliente Saudavel')).toBeInTheDocument()
+    })
   })
 
   it('executes login flow with session/cookie auth endpoints', async () => {

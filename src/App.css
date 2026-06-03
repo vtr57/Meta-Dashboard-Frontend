@@ -1909,6 +1909,274 @@
   color: #7a4d00;
 }
 
+.clientes-estado-view {
+  display: grid;
+  gap: 1rem;
+}
+
+.clientes-estado-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.clientes-estado-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.clientes-estado-summary-card {
+  border-radius: 14px;
+  border: 1px solid #c5d8f3;
+  background: #f8fbff;
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.3rem;
+  box-shadow: 0 10px 24px rgba(8, 47, 110, 0.06);
+}
+
+.clientes-estado-summary-card.danger {
+  border-color: #f1b7b4;
+  background: linear-gradient(180deg, #fff6f5 0%, #ffeceb 100%);
+  color: #8c1d18;
+}
+
+.clientes-estado-summary-card.info {
+  border-color: #b9cdef;
+  background: linear-gradient(180deg, #f5f9ff 0%, #edf3ff 100%);
+  color: #0b4ea2;
+}
+
+.clientes-estado-summary-card.success {
+  border-color: #a7dcb7;
+  background: linear-gradient(180deg, #f4fbf6 0%, #e9f8ee 100%);
+  color: #0f5b2b;
+}
+
+.clientes-estado-summary-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.clientes-estado-summary-value {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.clientes-kanban-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.clientes-kanban-column {
+  min-height: 420px;
+  border-radius: 18px;
+  border: 1px solid #c5d8f3;
+  background: #f8fbff;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.9rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.clientes-kanban-column.danger {
+  border-color: #f1b7b4;
+  background: linear-gradient(180deg, #fff7f7 0%, #fff0ef 100%);
+}
+
+.clientes-kanban-column.info {
+  border-color: #b9cdef;
+  background: linear-gradient(180deg, #f7faff 0%, #eef4ff 100%);
+}
+
+.clientes-kanban-column.success {
+  border-color: #a7dcb7;
+  background: linear-gradient(180deg, #f6fcf7 0%, #eefaf1 100%);
+}
+
+.clientes-kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.clientes-kanban-column-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.clientes-kanban-column-title i {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.clientes-kanban-column-title h3 {
+  margin: 0;
+  color: #102a4d;
+}
+
+.clientes-kanban-column-title p {
+  margin: 0.12rem 0 0;
+  color: #416388;
+  font-size: 0.86rem;
+}
+
+.clientes-kanban-card-list {
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+}
+
+.clientes-kanban-empty {
+  min-height: 120px;
+  border: 1px dashed #c6d8f3;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.clientes-kanban-empty p {
+  margin: 0;
+  color: #55779f;
+}
+
+.clientes-kanban-card {
+  border: 1px solid #d2e1fa;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+  box-shadow: 0 12px 28px rgba(8, 47, 110, 0.08);
+  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+
+.clientes-kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(8, 47, 110, 0.12);
+}
+
+.clientes-kanban-card.is-dragging {
+  opacity: 0.62;
+}
+
+.clientes-kanban-card.is-saving {
+  box-shadow: 0 0 0 2px rgba(11, 78, 162, 0.15);
+}
+
+.clientes-kanban-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.clientes-kanban-card-top h4 {
+  margin: 0;
+  color: #102a4d;
+  font-size: 1rem;
+}
+
+.clientes-kanban-card-account {
+  margin: 0.25rem 0 0;
+  color: #416388;
+  font-size: 0.86rem;
+}
+
+.clientes-kanban-card-handle {
+  color: #7091b7;
+  padding-top: 0.12rem;
+}
+
+.clientes-kanban-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.clientes-kanban-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #d5e2f6;
+  border-radius: 999px;
+  padding: 0.32rem 0.55rem;
+  background: #f6f9ff;
+  color: #355986;
+  font-size: 0.8rem;
+}
+
+.clientes-kanban-description-block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.clientes-kanban-description-label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #58799f;
+}
+
+.clientes-kanban-description-button {
+  border: 1px dashed #bfd3f0;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: #173a67;
+  text-align: left;
+  padding: 0.7rem 0.78rem;
+  min-height: 72px;
+  cursor: text;
+}
+
+.clientes-kanban-description-button:hover {
+  border-color: #8fb1df;
+  background: #f2f7ff;
+}
+
+.clientes-kanban-description-input {
+  width: 100%;
+  border: 1px solid #8fb1df;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f2950;
+  padding: 0.72rem 0.78rem;
+  box-sizing: border-box;
+}
+
+.clientes-kanban-description-input:focus {
+  outline: 2px solid rgba(11, 78, 162, 0.22);
+  outline-offset: 1px;
+}
+
+.clientes-kanban-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: #52749b;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 1024px) {
   .app-sidebar {
     position: static;
@@ -1984,6 +2252,11 @@
   .clientes-filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .clientes-kanban-grid,
+  .clientes-estado-summary {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2016,6 +2289,17 @@
 
   .clientes-actions-group,
   .clientes-context-actions {
+    width: 100%;
+  }
+
+  .clientes-estado-header,
+  .clientes-kanban-card-top,
+  .clientes-kanban-card-footer {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .clientes-estado-header .primary-btn {
     width: 100%;
   }
 }

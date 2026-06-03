@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import ConnectionPage from './pages/ConnectionPage'
-import { ClientesCadastrarPage, ClientesVisualizarPage } from './pages/ClientesPage'
+import {
+  ClientesCadastrarPage,
+  ClientesEstadoPage,
+  ClientesVisualizarPage,
+} from './pages/ClientesPage'
 import InstagramDashboardPage from './pages/InstagramDashboardPage'
 import MetaDashboardPage from './pages/MetaDashboardPage'
 import DataDeletionPage from './pages/DataDeletionPage'
@@ -155,6 +159,7 @@ function App() {
           <Route path="dashboard-instagram" element={<InstagramDashboardPage />} />
           <Route path="clientes" element={<Navigate to="/app/clientes/cadastrar" replace />} />
           <Route path="clientes/cadastrar" element={<ClientesCadastrarPage />} />
+          <Route path="clientes/estado" element={<ClientesEstadoPage />} />
           <Route path="clientes/visualizar" element={<ClientesVisualizarPage />} />
         </Route>
         <Route path="*" element={<Navigate to={user ? '/app/conexao' : '/login'} replace />} />

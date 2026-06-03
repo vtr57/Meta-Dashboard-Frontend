@@ -95,6 +95,15 @@ function AppSidebar({ user, onLogout }) {
                   <span>Visualizar</span>
                 </span>
               </NavLink>
+              <NavLink
+                to="/app/clientes/estado"
+                className={({ isActive }) => (isActive ? 'sidebar-sublink active' : 'sidebar-sublink')}
+              >
+                <span className="sidebar-link-content">
+                  <i className="fa-solid fa-table-columns sidebar-link-icon" aria-hidden="true" />
+                  <span>Estado</span>
+                </span>
+              </NavLink>
             </div>
           ) : null}
         </div>
