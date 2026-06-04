@@ -13,6 +13,7 @@ vi.mock('./lib/api', () => ({
 
 import App from './App.jsx'
 import api from './lib/api'
+import { daysAgo, toInputDate } from './pages/pageUtils'
 
 function setRoute(path) {
   window.history.pushState({}, '', path)
@@ -304,6 +305,8 @@ describe('App frontend flows', () => {
 
   it('renders relatorios page with sidebar entry and requested metrics', async () => {
     setRoute('/app/relatorios')
+    const expectedDateStart = toInputDate(daysAgo(8))
+    const expectedDateEnd = toInputDate(daysAgo(1))
 
     api.get.mockImplementation((url) => {
       if (url === '/auth/me/') {
@@ -347,6 +350,8 @@ describe('App frontend flows', () => {
     expect(screen.getByRole('link', { name: /Relatorios/i })).toBeInTheDocument()
     expect(screen.getByText('Valor usado')).toBeInTheDocument()
     expect(screen.getByText('Cliques no link')).toBeInTheDocument()
+    expect(screen.getByLabelText('Data inicial do relatorio')).toHaveValue(expectedDateStart)
+    expect(screen.getByLabelText('Data final do relatorio')).toHaveValue(expectedDateEnd)
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
     })

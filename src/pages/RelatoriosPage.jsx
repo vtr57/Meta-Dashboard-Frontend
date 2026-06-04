@@ -3,6 +3,15 @@ import SearchableSelect, { toSearchableItems } from '../components/SearchableSel
 import api from '../lib/api'
 import { daysAgo, formatCurrency, formatDecimal, formatNumber, logUiError, toInputDate } from './pageUtils'
 
+function getDefaultReportDateRange() {
+  const dateEnd = daysAgo(1)
+  const dateStart = daysAgo(8)
+  return {
+    date_start: toInputDate(dateStart),
+    date_end: toInputDate(dateEnd),
+  }
+}
+
 const REPORT_METRICS = [
   {
     key: 'valor_usado',
@@ -75,11 +84,12 @@ function findItemLabel(items, value, fallback) {
 }
 
 export default function RelatoriosPage() {
+  const defaultDateRange = useMemo(() => getDefaultReportDateRange(), [])
   const [filters, setFilters] = useState({
     ad_account_id: '',
     campaign_id: '',
-    date_start: toInputDate(daysAgo(30)),
-    date_end: toInputDate(new Date()),
+    date_start: defaultDateRange.date_start,
+    date_end: defaultDateRange.date_end,
   })
   const [options, setOptions] = useState({ ad_accounts: [], campaigns: [] })
   const [metrics, setMetrics] = useState(null)
@@ -114,7 +124,7 @@ export default function RelatoriosPage() {
       setOptions({
         ad_accounts: response.data?.ad_accounts || [],
         campaigns: response.data?.campaigns || [],
-      })
+  })
     } catch (error) {
       logUiError('relatorios', 'meta-filters', error)
       setErrorMsg('Falha ao carregar os filtros de relatorios.')
