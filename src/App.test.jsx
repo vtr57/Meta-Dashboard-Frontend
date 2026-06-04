@@ -345,14 +345,8 @@ describe('App frontend flows', () => {
 
     expect(await screen.findByRole('heading', { name: 'Relatorios' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Relatorios/i })).toBeInTheDocument()
-    expect(screen.getByText('Orcamento')).toBeInTheDocument()
     expect(screen.getByText('Valor usado')).toBeInTheDocument()
     expect(screen.getByText('Cliques no link')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(
-        screen.getByText((_, element) => element?.textContent === 'R$ 120,00'),
-      ).toBeInTheDocument()
-    })
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
     })

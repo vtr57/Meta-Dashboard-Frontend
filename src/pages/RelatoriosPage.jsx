@@ -5,12 +5,6 @@ import { daysAgo, formatCurrency, formatDecimal, formatNumber, logUiError, toInp
 
 const REPORT_METRICS = [
   {
-    key: 'orcamento',
-    label: 'Orcamento',
-    accent: 'primary',
-    formatter: (value) => (value === null || value === undefined ? 'N/A' : formatCurrency(value)),
-  },
-  {
     key: 'valor_usado',
     label: 'Valor usado',
     accent: 'primary',
@@ -244,27 +238,6 @@ export default function RelatoriosPage() {
           ))}
         </div>
       )}
-
-      <div className="reports-notes-grid">
-        <article className="reports-note-card">
-          <h3>Como ler as taxas</h3>
-          <p>
-            `Visualizaram o video por 3 segundos / Impressoes` mostra a eficiencia de retencao inicial do criativo no
-            recorte selecionado.
-          </p>
-          <p>
-            `Tx de conversao Envio de Mensagem` compara conversas iniciadas com cliques no link para indicar o quanto o
-            trafego virou conversa.
-          </p>
-        </article>
-        <article className="reports-note-card">
-          <h3>Observacoes</h3>
-          <p>
-            O `Orcamento` e algumas metricas complementares dependem de consulta em tempo real na Meta. Quando esse
-            dado nao estiver disponivel, a tela mostra `N/A` e preserva o restante do resumo.
-          </p>
-        </article>
-      </div>
     </section>
   )
 }
