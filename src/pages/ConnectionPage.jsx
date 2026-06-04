@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import api from '../lib/api'
-import { logUiError } from './pageUtils'
+import { logUiError, toInputDate } from './pageUtils'
 
 const FACEBOOK_OAUTH_MESSAGE_TYPE = 'facebook_oauth_result'
 const LAST_SYNC_AT_STORAGE_KEY = 'meta_last_sync_at'
@@ -230,6 +230,10 @@ export default function ConnectionPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [lastSyncAt, setLastSyncAt] = useState(() => getStoredLastSyncAt())
   const [trackingPaused, setTrackingPaused] = useState(false)
+  const [syncDateRange, setSyncDateRange] = useState({
+    date_start: '',
+    date_end: toInputDate(new Date()),
+  })
 
   const handleFacebookLogin = () => {
     const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
@@ -339,13 +343,33 @@ export default function ConnectionPage() {
     return () => window.removeEventListener('message', onOAuthMessage)
   }, [])
 
-  const handleSyncStart = async (endpoint, feedbackMessage = 'Sincronizacao iniciada.') => {
+  const buildSyncRequestPayload = (allowCustomRange) => {
+    if (!allowCustomRange) return undefined
+
+    const { date_start, date_end } = syncDateRange
+    if (!date_start && !date_end) return undefined
+    if (!date_start || !date_end) {
+      throw new Error('Informe data inicial e data final para usar um periodo personalizado.')
+    }
+    if (date_start > date_end) {
+      throw new Error('A data inicial nao pode ser maior que a data final.')
+    }
+
+    return { date_start, date_end }
+  }
+
+  const handleSyncStart = async (
+    endpoint,
+    feedbackMessage = 'Sincronizacao iniciada.',
+    options = { allowCustomRange: true },
+  ) => {
     setSyncLoading(true)
     setErrorMsg('')
     setFeedback('')
     setTrackingPaused(false)
     try {
-      const response = await api.post(endpoint)
+      const payload = buildSyncRequestPayload(options.allowCustomRange !== false)
+      const response = payload ? await api.post(endpoint, payload) : await api.post(endpoint)
       const runId = response.data?.sync_run_id
       if (runId) {
         const syncScope = response.data?.sync_scope || inferSyncScopeFromEndpoint(endpoint)
@@ -376,7 +400,9 @@ export default function ConnectionPage() {
   const handleSyncInstagram = () =>
     handleSyncStart('/api/meta/sync/start/instagram', 'Sincronizacao Instagram iniciada.')
   const handleSyncInsights7d = () =>
-    handleSyncStart('/api/meta/sync/start/insights-7d', 'Sincronizacao de insights (7 dias) iniciada.')
+    handleSyncStart('/api/meta/sync/start/insights-7d', 'Sincronizacao de insights (7 dias) iniciada.', {
+      allowCustomRange: false,
+    })
   const handleCancelSync = () => {
     if (!syncRun || syncRun.is_finished) return
     setTrackingPaused(true)
@@ -525,6 +551,38 @@ export default function ConnectionPage() {
 
             <div className="sync-group">
               <p className="sync-group-title">Sincronizacao Completa</p>
+              <div className="sync-date-range-grid">
+                <label className="sync-date-field">
+                  <span>Data inicial</span>
+                  <input
+                    type="date"
+                    value={syncDateRange.date_start}
+                    onChange={(event) =>
+                      setSyncDateRange((prev) => ({
+                        ...prev,
+                        date_start: event.target.value,
+                      }))
+                    }
+                    aria-label="Data inicial da sincronizacao"
+                    disabled={!canStartSync}
+                  />
+                </label>
+                <label className="sync-date-field">
+                  <span>Data final</span>
+                  <input
+                    type="date"
+                    value={syncDateRange.date_end}
+                    onChange={(event) =>
+                      setSyncDateRange((prev) => ({
+                        ...prev,
+                        date_end: event.target.value,
+                      }))
+                    }
+                    aria-label="Data final da sincronizacao"
+                    disabled={!canStartSync}
+                  />
+                </label>
+              </div>
               <button
                 type="button"
                 className="primary-btn sync-primary-btn"
@@ -534,7 +592,9 @@ export default function ConnectionPage() {
                 <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" />{' '}
                 {syncInProgress ? 'Sincronizando...' : 'Sincronizar Tudo'}
               </button>
-              <p className="sync-group-caption">Extrai contas, campanhas, anuncios e insights.</p>
+              <p className="sync-group-caption">
+                Extrai contas, campanhas, anuncios e insights. Se preencher as datas, usa exatamente esse periodo.
+              </p>
             </div>
 
             <div className="sync-group">

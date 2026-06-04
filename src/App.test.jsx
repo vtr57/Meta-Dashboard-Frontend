@@ -203,10 +203,16 @@ describe('App frontend flows', () => {
     expect(screen.getByRole('button', { name: 'Ultimos 7 dias' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apenas Meta Ads' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apenas Instagram' })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Data inicial da sincronizacao'), { target: { value: '2026-02-01' } })
+    fireEvent.change(screen.getByLabelText('Data final da sincronizacao'), { target: { value: '2026-02-10' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ultimos 7 dias' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apenas Meta Ads' }))
 
-    expect(await screen.findByText('Sincronizacao de insights (7 dias) iniciada.')).toBeInTheDocument()
+    expect(api.post).toHaveBeenCalledWith('/api/meta/sync/start/meta', {
+      date_start: '2026-02-01',
+      date_end: '2026-02-10',
+    })
+    expect(await screen.findByText('Sincronizacao Meta iniciada.')).toBeInTheDocument()
     expect(await screen.findByText('Sincronizacao concluida com sucesso.')).toBeInTheDocument()
     expect(await screen.findByText('Ad Account')).toBeInTheDocument()
   })

@@ -495,6 +495,29 @@
   font-size: 0.86rem;
 }
 
+.sync-date-range-grid {
+  margin-top: 0.62rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.sync-date-field {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.sync-date-field span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #355986;
+}
+
+.sync-date-field input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .sync-primary-btn {
   margin-top: 0.62rem;
   width: 100%;
@@ -2459,6 +2482,10 @@
   }
 
   .sync-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-date-range-grid {
     grid-template-columns: 1fr;
   }
 
