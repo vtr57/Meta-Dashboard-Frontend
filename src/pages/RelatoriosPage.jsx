@@ -77,25 +77,46 @@ const REPORT_METRICS = [
   },
 ]
 
+function formatMetricDelta(change) {
+  if (change === null || change === undefined) {
+    return { label: 'sem base anterior', tone: 'neutral' }
+  }
+
+  const parsed = Number(change)
+  if (Number.isNaN(parsed)) {
+    return { label: 'sem base anterior', tone: 'neutral' }
+  }
+
+  const sign = parsed > 0 ? '+' : ''
+  const tone = parsed > 0 ? 'positive' : parsed < 0 ? 'negative' : 'neutral'
+  return { label: `${sign}${formatDecimal(parsed, 2)}%`, tone }
+}
+
+function buildMetricDisplay(metric, metrics, metricChanges) {
+  return {
+    valueText: metric.formatter(metrics?.[metric.key]),
+    delta: formatMetricDelta(metricChanges?.[metric.key]),
+  }
+}
+
 function findItemLabel(items, value, fallback) {
   if (!value) return fallback
   const selected = items.find((item) => item.id === value)
   return selected?.label || value
 }
 
-function buildWhatsappReportMessage({ accountName, metrics }) {
-  const valorUsado = formatCurrency(metrics?.valor_usado)
-  const resultados = formatNumber(metrics?.resultados)
-  const custoPorMensagem =
-    metrics?.custo_por_resultado === null || metrics?.custo_por_resultado === undefined
-      ? 'N/A'
-      : formatCurrency(metrics.custo_por_resultado)
-  const ctr = metrics?.ctr_link === null || metrics?.ctr_link === undefined ? 'N/A' : `${formatDecimal(metrics.ctr_link, 2)}%`
-  const cpm = metrics?.cpm === null || metrics?.cpm === undefined ? 'N/A' : formatCurrency(metrics.cpm)
-  const taxaMensagem =
-    metrics?.tx_conversao_envio_mensagem === null || metrics?.tx_conversao_envio_mensagem === undefined
-      ? 'N/A'
-      : `${formatDecimal(metrics.tx_conversao_envio_mensagem, 2)}%`
+function buildMetricTextWithDelta(metric, metrics, metricChanges) {
+  const display = buildMetricDisplay(metric, metrics, metricChanges)
+  return `${display.valueText} (${display.delta.label})`
+}
+
+function buildWhatsappReportMessage({ accountName, metrics, metricChanges }) {
+  const valorUsado = buildMetricTextWithDelta(REPORT_METRICS[0], metrics, metricChanges)
+  const resultados = buildMetricTextWithDelta(REPORT_METRICS[1], metrics, metricChanges)
+  const custoPorMensagem = buildMetricTextWithDelta(REPORT_METRICS[2], metrics, metricChanges)
+  const ctr = buildMetricTextWithDelta(REPORT_METRICS[4], metrics, metricChanges)
+  const cpm = buildMetricTextWithDelta(REPORT_METRICS[7], metrics, metricChanges)
+  const taxaMensagem = buildMetricTextWithDelta(REPORT_METRICS[6], metrics, metricChanges)
 
   return `*Relatório Meta Ads ${accountName}:*
 Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
@@ -120,6 +141,7 @@ export default function RelatoriosPage() {
   })
   const [options, setOptions] = useState({ ad_accounts: [], campaigns: [] })
   const [metrics, setMetrics] = useState(null)
+  const [metricChanges, setMetricChanges] = useState({})
   const [filtersLoading, setFiltersLoading] = useState(false)
   const [reportLoading, setReportLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -155,8 +177,8 @@ export default function RelatoriosPage() {
     return name || selectedAccountLabel || 'Conta de anúncio'
   }, [filters.ad_account_id, options.ad_accounts, selectedAccountLabel])
   const generatedWhatsappMessage = useMemo(
-    () => buildWhatsappReportMessage({ accountName: reportAccountName, metrics }),
-    [metrics, reportAccountName],
+    () => buildWhatsappReportMessage({ accountName: reportAccountName, metrics, metricChanges }),
+    [metricChanges, metrics, reportAccountName],
   )
 
   const loadFilters = useCallback(async () => {
@@ -169,7 +191,7 @@ export default function RelatoriosPage() {
       setOptions({
         ad_accounts: response.data?.ad_accounts || [],
         campaigns: response.data?.campaigns || [],
-  })
+      })
     } catch (error) {
       logUiError('relatorios', 'meta-filters', error)
       setErrorMsg('Falha ao carregar os filtros de relatorios.')
@@ -190,10 +212,12 @@ export default function RelatoriosPage() {
       if (filters.campaign_id) params.campaign_id = filters.campaign_id
       const response = await api.get('/api/meta/report-summary', { params })
       setMetrics(response.data?.metrics || null)
+      setMetricChanges(response.data?.metric_changes || {})
     } catch (error) {
       logUiError('relatorios', 'meta-report-summary', error)
       setErrorMsg(error.response?.data?.detail || 'Falha ao carregar o relatorio.')
       setMetrics(null)
+      setMetricChanges({})
     } finally {
       setReportLoading(false)
     }
@@ -307,15 +331,23 @@ export default function RelatoriosPage() {
         <p className="hint-neutral">Carregando relatorio...</p>
       ) : (
         <div className="reports-metrics-grid">
-          {REPORT_METRICS.map((metric) => (
-            <article
-              key={metric.key}
-              className={`reports-metric-card ${metric.accent ? `reports-metric-card-${metric.accent}` : ''}`}
-            >
-              <p className="reports-metric-label">{metric.label}</p>
-              <p className="reports-metric-value">{metric.formatter(metrics?.[metric.key])}</p>
-            </article>
-          ))}
+          {REPORT_METRICS.map((metric) => {
+            const display = buildMetricDisplay(metric, metrics, metricChanges)
+            return (
+              <article
+                key={metric.key}
+                className={`reports-metric-card ${metric.accent ? `reports-metric-card-${metric.accent}` : ''}`}
+              >
+                <p className="reports-metric-label">{metric.label}</p>
+                <div className="reports-metric-value-group">
+                  <p className="reports-metric-value">{display.valueText}</p>
+                  <span className={`reports-metric-delta reports-metric-delta-${display.delta.tone}`}>
+                    {display.delta.label}
+                  </span>
+                </div>
+              </article>
+            )
+          })}
         </div>
       )}
 

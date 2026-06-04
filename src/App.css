@@ -977,6 +977,40 @@
   line-height: 1.15;
 }
 
+.reports-metric-value-group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.reports-metric-delta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.34rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: none;
+}
+
+.reports-metric-delta-positive {
+  background: #eaf8ef;
+  color: #156338;
+}
+
+.reports-metric-delta-negative {
+  background: #fff0f0;
+  color: #a33636;
+}
+
+.reports-metric-delta-neutral {
+  background: #eef4ff;
+  color: #4a6488;
+}
+
 .reports-message-card {
   border: 1px solid #bfd1ee;
   background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);

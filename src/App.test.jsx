@@ -343,6 +343,20 @@ describe('App frontend flows', () => {
               impressoes: 300,
               cliques_link: 30,
             },
+            metric_changes: {
+              valor_usado: 5.6,
+              resultados: 14.25,
+              custo_por_resultado: -3.1,
+              cpc_link: 0,
+              ctr_link: 2.3456,
+              taxa_video_3s_por_impressoes: 9.1,
+              tx_conversao_envio_mensagem: -4.2,
+              cpm: 8.4,
+              alcance: 1.5,
+              frequencia: null,
+              impressoes: 12.8,
+              cliques_link: -6.4,
+            },
           },
         })
       }
@@ -360,16 +374,19 @@ describe('App frontend flows', () => {
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
     })
+    expect(screen.getByText('+5,60%')).toBeInTheDocument()
+    expect(screen.getByText('-6,40%')).toBeInTheDocument()
+    expect(screen.getByText('sem base anterior')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copiar mensagem para WhatsApp' })).toBeInTheDocument()
     expect(screen.getByLabelText('Mensagem de relatório para WhatsApp')).toHaveValue(
       `*Relatório Meta Ads Conta Principal:*
 Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
-* Valor usado: R$ 30,00
-* Mensagens: 8
-* Custo por mensagens: R$ 3,75
-* CTR: 10,00%
-* CPM: R$ 100,00
-* Tx de mensagem: 26,67%
+* Valor usado: R$ 30,00 (+5,60%)
+* Mensagens: 8 (+14,25%)
+* Custo por mensagens: R$ 3,75 (-3,10%)
+* CTR: 10,00% (+2,35%)
+* CPM: R$ 100,00 (+8,40%)
+* Tx de mensagem: 26,67% (-4,20%)
 
 Obs.: 
 `,
