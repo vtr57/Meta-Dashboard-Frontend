@@ -374,12 +374,18 @@ describe('App frontend flows', () => {
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
     })
-    expect(screen.getByText('+5,60%')).toBeInTheDocument()
-    expect(screen.getByText('-6,40%')).toBeInTheDocument()
-    expect(screen.getByText('sem base anterior')).toBeInTheDocument()
+    const positiveSpend = screen.getByText('+5,60%')
+    const negativeClicks = screen.getByText('-6,40%')
+    const positiveCpm = screen.getByText('+8,40%')
+    const negativeCpr = screen.getByText('-3,10%')
+    expect(positiveSpend).toHaveClass('reports-metric-delta', 'reports-metric-delta-positive')
+    expect(negativeClicks).toHaveClass('reports-metric-delta', 'reports-metric-delta-negative')
+    expect(positiveCpm).toHaveClass('reports-metric-delta', 'reports-metric-delta-negative')
+    expect(negativeCpr).toHaveClass('reports-metric-delta', 'reports-metric-delta-positive')
+    expect(screen.getByText('sem base anterior')).toHaveClass('reports-metric-delta', 'reports-metric-delta-neutral')
     expect(screen.getByRole('button', { name: 'Copiar mensagem para WhatsApp' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Mensagem de relatório para WhatsApp')).toHaveValue(
-      `*Relatório Meta Ads Conta Principal:*
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mensagem de relatório para WhatsApp')).toHaveValue(`*Relatório Meta Ads Conta Principal:*
 Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
 * Valor usado: R$ 30,00 (+5,60%)
 * Mensagens: 8 (+14,25%)
@@ -389,8 +395,8 @@ Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas camp
 * Tx de mensagem: 26,67% (-4,20%)
 
 Obs.: 
-`,
-    )
+`)
+    })
   })
 
   it('hides ad filter and renders specific tab data in meta dashboard', async () => {

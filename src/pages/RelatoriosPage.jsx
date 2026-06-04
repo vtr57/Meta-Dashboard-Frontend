@@ -17,67 +17,79 @@ const REPORT_METRICS = [
     key: 'valor_usado',
     label: 'Valor usado',
     accent: 'primary',
+    deltaDirection: 'higher-better',
     formatter: (value) => formatCurrency(value),
   },
   {
     key: 'resultados',
     label: 'Resultados',
     accent: 'primary',
+    deltaDirection: 'higher-better',
     formatter: (value) => formatNumber(value),
   },
   {
     key: 'custo_por_resultado',
     label: 'Custo por resultado',
+    deltaDirection: 'lower-better',
     formatter: (value) => (value === null || value === undefined ? 'N/A' : formatCurrency(value)),
   },
   {
     key: 'cpc_link',
     label: 'CPC (custo por clique no link)',
+    deltaDirection: 'lower-better',
     formatter: (value) => (value === null || value === undefined ? 'N/A' : formatCurrency(value)),
   },
   {
     key: 'ctr_link',
     label: 'CTR (taxa de cliques no link)',
+    deltaDirection: 'higher-better',
     formatter: (value) => `${formatDecimal(value, 2)}%`,
   },
   {
     key: 'taxa_video_3s_por_impressoes',
     label: 'Visualizaram o video por 3 segundos / Impressoes',
+    deltaDirection: 'higher-better',
     formatter: (value) => (value === null || value === undefined ? 'N/A' : `${formatDecimal(value, 2)}%`),
   },
   {
     key: 'tx_conversao_envio_mensagem',
     label: 'Tx de conversao Envio de Mensagem',
+    deltaDirection: 'higher-better',
     formatter: (value) => (value === null || value === undefined ? 'N/A' : `${formatDecimal(value, 2)}%`),
   },
   {
     key: 'cpm',
     label: 'CPM',
+    deltaDirection: 'lower-better',
     formatter: (value) => formatCurrency(value),
   },
   {
     key: 'alcance',
     label: 'Alcance',
+    deltaDirection: 'higher-better',
     formatter: (value) => formatNumber(value),
   },
   {
     key: 'frequencia',
     label: 'Frequencia',
+    deltaDirection: 'higher-better',
     formatter: (value) => formatDecimal(value, 2),
   },
   {
     key: 'impressoes',
     label: 'Impressoes',
+    deltaDirection: 'higher-better',
     formatter: (value) => formatNumber(value),
   },
   {
     key: 'cliques_link',
     label: 'Cliques no link',
+    deltaDirection: 'higher-better',
     formatter: (value) => formatNumber(value),
   },
 ]
 
-function formatMetricDelta(change) {
+function formatMetricDelta(metric, change) {
   if (change === null || change === undefined) {
     return { label: 'sem base anterior', tone: 'neutral' }
   }
@@ -88,14 +100,22 @@ function formatMetricDelta(change) {
   }
 
   const sign = parsed > 0 ? '+' : ''
-  const tone = parsed > 0 ? 'positive' : parsed < 0 ? 'negative' : 'neutral'
+  let tone = 'neutral'
+  if (parsed !== 0) {
+    const positiveIsGood = metric?.deltaDirection !== 'lower-better'
+    if (parsed > 0) {
+      tone = positiveIsGood ? 'positive' : 'negative'
+    } else {
+      tone = positiveIsGood ? 'negative' : 'positive'
+    }
+  }
   return { label: `${sign}${formatDecimal(parsed, 2)}%`, tone }
 }
 
 function buildMetricDisplay(metric, metrics, metricChanges) {
   return {
     valueText: metric.formatter(metrics?.[metric.key]),
-    delta: formatMetricDelta(metricChanges?.[metric.key]),
+    delta: formatMetricDelta(metric, metricChanges?.[metric.key]),
   }
 }
 
@@ -118,9 +138,8 @@ function buildWhatsappReportMessage({ accountName, metrics, metricChanges }) {
   const cpm = buildMetricTextWithDelta(REPORT_METRICS[7], metrics, metricChanges)
   const taxaMensagem = buildMetricTextWithDelta(REPORT_METRICS[6], metrics, metricChanges)
 
-  return `*Relatório Meta Ads: ${accountName}:*
-
-Olá, bom dia! Segue o relatório da semana passada no Meta Ads de nossas campanhas de mensagens:
+  return `*Relatório Meta Ads ${accountName}:*
+Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
 * Valor usado: ${valorUsado}
 * Mensagens: ${resultados}
 * Custo por mensagens: ${custoPorMensagem}
