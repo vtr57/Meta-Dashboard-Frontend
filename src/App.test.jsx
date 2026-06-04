@@ -305,7 +305,7 @@ describe('App frontend flows', () => {
 
   it('renders relatorios page with sidebar entry and requested metrics', async () => {
     setRoute('/app/relatorios')
-    const expectedDateStart = toInputDate(daysAgo(8))
+    const expectedDateStart = toInputDate(daysAgo(7))
     const expectedDateEnd = toInputDate(daysAgo(1))
     Object.assign(navigator, {
       clipboard: {

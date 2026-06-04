@@ -5,7 +5,7 @@ import { daysAgo, formatCurrency, formatDecimal, formatNumber, logUiError, toInp
 
 function getDefaultReportDateRange() {
   const dateEnd = daysAgo(1)
-  const dateStart = daysAgo(8)
+  const dateStart = daysAgo(7)
   return {
     date_start: toInputDate(dateStart),
     date_end: toInputDate(dateEnd),
