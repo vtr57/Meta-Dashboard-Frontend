@@ -138,7 +138,8 @@ function buildWhatsappReportMessage({ accountName, metrics, metricChanges }) {
   const cpm = buildMetricTextWithDelta(REPORT_METRICS[7], metrics, metricChanges)
   const taxaMensagem = buildMetricTextWithDelta(REPORT_METRICS[6], metrics, metricChanges)
 
-  return `*Relatório Meta Ads ${accountName}:*
+  return `*Relatório Meta Ads: ${accountName}:*
+
 Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
 * Valor usado: ${valorUsado}
 * Mensagens: ${resultados}
