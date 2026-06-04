@@ -893,6 +893,117 @@
   font-size: 0.85rem;
 }
 
+.reports-view {
+  display: grid;
+  gap: 1rem;
+}
+
+.reports-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reports-subtitle {
+  margin: 0.35rem 0 0;
+  max-width: 58rem;
+}
+
+.reports-filter-grid {
+  align-items: stretch;
+}
+
+.reports-context-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.reports-context-card,
+.reports-metric-card,
+.reports-note-card {
+  border: 1px solid #bfd1ee;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(8, 47, 110, 0.08);
+}
+
+.reports-context-card {
+  padding: 1rem 1.05rem;
+}
+
+.reports-context-label,
+.reports-metric-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #56759f;
+}
+
+.reports-context-value {
+  margin: 0.45rem 0 0;
+  color: #102a4d;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.reports-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.reports-metric-card {
+  min-height: 132px;
+  padding: 1rem 1.05rem;
+  display: grid;
+  align-content: space-between;
+  gap: 0.7rem;
+}
+
+.reports-metric-card-primary {
+  background: linear-gradient(180deg, #eef5ff 0%, #ffffff 100%);
+  border-color: #9cb8e2;
+}
+
+.reports-metric-value {
+  margin: 0;
+  color: #082f6e;
+  font-size: clamp(1.2rem, 1rem + 0.8vw, 1.85rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.reports-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.reports-note-card {
+  padding: 1rem 1.05rem;
+}
+
+.reports-note-card h3 {
+  margin: 0 0 0.6rem;
+  color: #102a4d;
+  font-size: 1rem;
+}
+
+.reports-note-card p {
+  margin: 0;
+  color: #456486;
+  line-height: 1.55;
+}
+
+.reports-note-card p + p {
+  margin-top: 0.7rem;
+}
+
 .filter-actions {
   margin-top: 0.75rem;
 }
@@ -2232,6 +2343,12 @@
     grid-template-columns: 1fr;
   }
 
+  .reports-context-grid,
+  .reports-metrics-grid,
+  .reports-notes-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .sidebar-submenu {
     margin-left: 0;
     padding-left: 0;
@@ -2285,6 +2402,12 @@
 
   .filter-grid,
   .instagram-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-context-grid,
+  .reports-metrics-grid,
+  .reports-notes-grid {
     grid-template-columns: 1fr;
   }
 

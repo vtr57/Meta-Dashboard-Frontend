@@ -8,6 +8,7 @@ import {
 } from './pages/ClientesPage'
 import InstagramDashboardPage from './pages/InstagramDashboardPage'
 import MetaDashboardPage from './pages/MetaDashboardPage'
+import RelatoriosPage from './pages/RelatoriosPage'
 import DataDeletionPage from './pages/DataDeletionPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import AppLayout from './components/AppLayout'
@@ -157,6 +158,7 @@ function App() {
           <Route path="conexao" element={<ConnectionPage />} />
           <Route path="dashboard-meta" element={<MetaDashboardPage />} />
           <Route path="dashboard-instagram" element={<InstagramDashboardPage />} />
+          <Route path="relatorios" element={<RelatoriosPage />} />
           <Route path="clientes" element={<Navigate to="/app/clientes/cadastrar" replace />} />
           <Route path="clientes/cadastrar" element={<ClientesCadastrarPage />} />
           <Route path="clientes/estado" element={<ClientesEstadoPage />} />

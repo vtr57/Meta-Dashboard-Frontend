@@ -59,6 +59,15 @@ function AppSidebar({ user, onLogout }) {
             <span>Dashboard Instagram</span>
           </span>
         </NavLink>
+        <NavLink
+          to="/app/relatorios"
+          className={({ isActive }) => (isActive ? 'sidebar-link active' : 'sidebar-link')}
+        >
+          <span className="sidebar-link-content">
+            <i className="fa-solid fa-chart-line sidebar-link-icon" aria-hidden="true" />
+            <span>Relatorios</span>
+          </span>
+        </NavLink>
         <div className="sidebar-group">
           <button
             type="button"

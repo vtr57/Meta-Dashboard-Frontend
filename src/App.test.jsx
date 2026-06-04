@@ -302,6 +302,62 @@ describe('App frontend flows', () => {
     expect(screen.getByRole('tab', { name: 'Específica' })).toHaveAttribute('aria-selected', 'false')
   })
 
+  it('renders relatorios page with sidebar entry and requested metrics', async () => {
+    setRoute('/app/relatorios')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 32, username: 'report-user' } } })
+      }
+      if (url === '/api/meta/filters') {
+        return Promise.resolve({
+          data: {
+            ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
+            campaigns: [{ id_meta_campaign: 'cmp_1', name: 'Campanha A' }],
+          },
+        })
+      }
+      if (url === '/api/meta/report-summary') {
+        return Promise.resolve({
+          data: {
+            metrics: {
+              orcamento: 120,
+              valor_usado: 30,
+              resultados: 8,
+              custo_por_resultado: 3.75,
+              cpc_link: 1,
+              ctr_link: 10,
+              taxa_video_3s_por_impressoes: 20,
+              tx_conversao_envio_mensagem: 26.6667,
+              cpm: 100,
+              alcance: 150,
+              frequencia: 2,
+              impressoes: 300,
+              cliques_link: 30,
+            },
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Relatorios' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Relatorios/i })).toBeInTheDocument()
+    expect(screen.getByText('Orcamento')).toBeInTheDocument()
+    expect(screen.getByText('Valor usado')).toBeInTheDocument()
+    expect(screen.getByText('Cliques no link')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByText((_, element) => element?.textContent === 'R$ 120,00'),
+      ).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
+    })
+  })
+
   it('hides ad filter and renders specific tab data in meta dashboard', async () => {
     setRoute('/app/dashboard-meta')
 
