@@ -307,6 +307,11 @@ describe('App frontend flows', () => {
     setRoute('/app/relatorios')
     const expectedDateStart = toInputDate(daysAgo(8))
     const expectedDateEnd = toInputDate(daysAgo(1))
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
 
     api.get.mockImplementation((url) => {
       if (url === '/auth/me/') {
@@ -355,6 +360,20 @@ describe('App frontend flows', () => {
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: 'Copiar mensagem para WhatsApp' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Mensagem de relatório para WhatsApp')).toHaveValue(
+      `*Relatório Meta Ads Conta Principal:*
+Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
+* Valor usado: R$ 30,00
+* Mensagens: 8
+* Custo por mensagens: R$ 3,75
+* CTR: 10,00%
+* CPM: R$ 100,00
+* Tx de mensagem: 26,67%
+
+Obs.: 
+`,
+    )
   })
 
   it('hides ad filter and renders specific tab data in meta dashboard', async () => {

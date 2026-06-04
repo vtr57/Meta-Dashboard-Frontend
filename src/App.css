@@ -977,6 +977,90 @@
   line-height: 1.15;
 }
 
+.reports-message-card {
+  border: 1px solid #bfd1ee;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(8, 47, 110, 0.08);
+  padding: 1rem 1.05rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.reports-message-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.reports-message-header h3 {
+  margin: 0;
+  color: #102a4d;
+  font-size: 1rem;
+}
+
+.reports-message-subtitle {
+  margin: 0.28rem 0 0;
+}
+
+.reports-message-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.reports-copy-feedback {
+  color: #295f1f;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.reports-copy-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #b7cced;
+  border-radius: 12px;
+  background: #eef4ff;
+  color: #0b4ea2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.reports-copy-btn:hover {
+  background: #dfeaff;
+  border-color: #94b4e4;
+  transform: translateY(-1px);
+}
+
+.reports-copy-btn:focus-visible {
+  outline: 2px solid #3d75c4;
+  outline-offset: 2px;
+}
+
+.reports-message-textarea {
+  width: 100%;
+  min-height: 210px;
+  border: 1px solid #b7cced;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #102a4d;
+  padding: 0.9rem 0.95rem;
+  box-sizing: border-box;
+  resize: vertical;
+  line-height: 1.6;
+  font: inherit;
+}
+
+.reports-message-textarea:focus-visible {
+  outline: 2px solid #3d75c4;
+  outline-offset: 2px;
+}
+
 .filter-actions {
   margin-top: 0.75rem;
 }
@@ -2321,6 +2405,15 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .reports-message-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reports-message-actions {
+    justify-content: space-between;
+  }
+
   .sidebar-submenu {
     margin-left: 0;
     padding-left: 0;
@@ -2380,6 +2473,10 @@
   .reports-context-grid,
   .reports-metrics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .reports-copy-btn {
+    align-self: flex-start;
   }
 
   .clientes-actions {

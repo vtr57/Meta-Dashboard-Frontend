@@ -83,6 +83,33 @@ function findItemLabel(items, value, fallback) {
   return selected?.label || value
 }
 
+function buildWhatsappReportMessage({ accountName, metrics }) {
+  const valorUsado = formatCurrency(metrics?.valor_usado)
+  const resultados = formatNumber(metrics?.resultados)
+  const custoPorMensagem =
+    metrics?.custo_por_resultado === null || metrics?.custo_por_resultado === undefined
+      ? 'N/A'
+      : formatCurrency(metrics.custo_por_resultado)
+  const ctr = metrics?.ctr_link === null || metrics?.ctr_link === undefined ? 'N/A' : `${formatDecimal(metrics.ctr_link, 2)}%`
+  const cpm = metrics?.cpm === null || metrics?.cpm === undefined ? 'N/A' : formatCurrency(metrics.cpm)
+  const taxaMensagem =
+    metrics?.tx_conversao_envio_mensagem === null || metrics?.tx_conversao_envio_mensagem === undefined
+      ? 'N/A'
+      : `${formatDecimal(metrics.tx_conversao_envio_mensagem, 2)}%`
+
+  return `*Relatório Meta Ads ${accountName}:*
+Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
+* Valor usado: ${valorUsado}
+* Mensagens: ${resultados}
+* Custo por mensagens: ${custoPorMensagem}
+* CTR: ${ctr}
+* CPM: ${cpm}
+* Tx de mensagem: ${taxaMensagem}
+
+Obs.: 
+`
+}
+
 export default function RelatoriosPage() {
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), [])
   const [filters, setFilters] = useState({
@@ -96,6 +123,8 @@ export default function RelatoriosPage() {
   const [filtersLoading, setFiltersLoading] = useState(false)
   const [reportLoading, setReportLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [reportMessage, setReportMessage] = useState('')
+  const [copyFeedback, setCopyFeedback] = useState('')
 
   const adAccountItems = useMemo(
     () => toSearchableItems(options.ad_accounts, 'id_meta_ad_account'),
@@ -112,6 +141,22 @@ export default function RelatoriosPage() {
   const selectedCampaignLabel = useMemo(
     () => findItemLabel(campaignItems, filters.campaign_id, 'Todas as campaigns da selecao'),
     [campaignItems, filters.campaign_id],
+  )
+  const reportAccountName = useMemo(() => {
+    if (!filters.ad_account_id) {
+      if (options.ad_accounts.length === 1) {
+        const singleName = String(options.ad_accounts[0]?.name || '').trim()
+        return singleName || 'Conta de anúncio'
+      }
+      return 'Conta de anúncio'
+    }
+    const selected = options.ad_accounts.find((item) => item?.id_meta_ad_account === filters.ad_account_id)
+    const name = String(selected?.name || '').trim()
+    return name || selectedAccountLabel || 'Conta de anúncio'
+  }, [filters.ad_account_id, options.ad_accounts, selectedAccountLabel])
+  const generatedWhatsappMessage = useMemo(
+    () => buildWhatsappReportMessage({ accountName: reportAccountName, metrics }),
+    [metrics, reportAccountName],
   )
 
   const loadFilters = useCallback(async () => {
@@ -162,6 +207,10 @@ export default function RelatoriosPage() {
     loadReport()
   }, [loadReport])
 
+  useEffect(() => {
+    setReportMessage(generatedWhatsappMessage)
+  }, [generatedWhatsappMessage])
+
   const updateFilter = (field, value) => {
     setFilters((prev) => {
       const next = { ...prev, [field]: value }
@@ -170,6 +219,27 @@ export default function RelatoriosPage() {
       }
       return next
     })
+  }
+
+  const handleCopyMessage = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(reportMessage)
+      } else {
+        const tempTextArea = document.createElement('textarea')
+        tempTextArea.value = reportMessage
+        document.body.appendChild(tempTextArea)
+        tempTextArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(tempTextArea)
+      }
+      setCopyFeedback('Mensagem copiada.')
+      window.setTimeout(() => setCopyFeedback(''), 1800)
+    } catch (error) {
+      logUiError('relatorios', 'copy-whatsapp-message', error)
+      setCopyFeedback('Falha ao copiar.')
+      window.setTimeout(() => setCopyFeedback(''), 2200)
+    }
   }
 
   return (
@@ -248,6 +318,34 @@ export default function RelatoriosPage() {
           ))}
         </div>
       )}
+
+      <article className="reports-message-card">
+        <div className="reports-message-header">
+          <div>
+            <h3>Mensagem para WhatsApp</h3>
+            <p className="hint-neutral reports-message-subtitle">Texto pronto para copiar e colar com as métricas atuais.</p>
+          </div>
+          <div className="reports-message-actions">
+            {copyFeedback ? <span className="reports-copy-feedback">{copyFeedback}</span> : null}
+            <button
+              type="button"
+              className="reports-copy-btn"
+              aria-label="Copiar mensagem para WhatsApp"
+              title="Copiar mensagem para WhatsApp"
+              onClick={handleCopyMessage}
+            >
+              <i className="fa-regular fa-copy" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <textarea
+          className="reports-message-textarea"
+          value={reportMessage}
+          onChange={(event) => setReportMessage(event.target.value)}
+          aria-label="Mensagem de relatório para WhatsApp"
+          spellCheck={false}
+        />
+      </article>
     </section>
   )
 }
