@@ -222,9 +222,30 @@ describe('App frontend flows', () => {
         return Promise.resolve({
           data: {
             ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
-            campaigns: [{ id_meta_campaign: 'cmp_1', name: 'Campanha A' }],
-            adsets: [{ id_meta_adset: 'ads_1', name: 'AdSet A' }],
-            ads: [{ id_meta_ad: 'ad_1', name: 'Ad A' }],
+            campaigns: [
+              {
+                id_meta_campaign: 'cmp_1',
+                name: 'Campanha A',
+                status_display: 'ATIVO',
+                display_name: 'Campanha A - ATIVO',
+              },
+            ],
+            adsets: [
+              {
+                id_meta_adset: 'ads_1',
+                name: 'AdSet A',
+                status_display: 'DESATIVADO',
+                display_name: 'AdSet A - DESATIVADO',
+              },
+            ],
+            ads: [
+              {
+                id_meta_ad: 'ad_1',
+                name: 'Ad A',
+                status_display: 'ATIVO',
+                display_name: 'Ad A - ATIVO',
+              },
+            ],
           },
         })
       }
@@ -301,6 +322,12 @@ describe('App frontend flows', () => {
     expect(screen.getByText('Impressão Total')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Geral' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Específica' })).toHaveAttribute('aria-selected', 'false')
+    fireEvent.focus(screen.getByLabelText('Filtro de campaign'))
+    expect(await screen.findByRole('button', { name: 'Campanha A - ATIVO' })).toBeInTheDocument()
+    fireEvent.focus(screen.getByLabelText('Filtro de adset'))
+    expect(await screen.findByRole('button', { name: 'AdSet A - DESATIVADO' })).toBeInTheDocument()
+    fireEvent.focus(screen.getByLabelText('Filtro de ads'))
+    expect(await screen.findByRole('button', { name: 'Ad A - ATIVO' })).toBeInTheDocument()
   })
 
   it('renders relatorios page with sidebar entry and requested metrics', async () => {
@@ -321,7 +348,14 @@ describe('App frontend flows', () => {
         return Promise.resolve({
           data: {
             ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
-            campaigns: [{ id_meta_campaign: 'cmp_1', name: 'Campanha A' }],
+            campaigns: [
+              {
+                id_meta_campaign: 'cmp_1',
+                name: 'Campanha A',
+                status_display: 'ATIVO',
+                display_name: 'Campanha A - ATIVO',
+              },
+            ],
           },
         })
       }
@@ -371,6 +405,8 @@ describe('App frontend flows', () => {
     expect(screen.getByText('Cliques no link')).toBeInTheDocument()
     expect(screen.getByLabelText('Data inicial do relatorio')).toHaveValue(expectedDateStart)
     expect(screen.getByLabelText('Data final do relatorio')).toHaveValue(expectedDateEnd)
+    fireEvent.focus(screen.getByLabelText('Filtro de campaign'))
+    expect(await screen.findByRole('button', { name: 'Campanha A - ATIVO' })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
     })
@@ -386,6 +422,7 @@ describe('App frontend flows', () => {
     expect(screen.getByRole('button', { name: 'Copiar mensagem para WhatsApp' })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByLabelText('Mensagem de relatório para WhatsApp')).toHaveValue(`*Relatório Meta Ads Conta Principal:*
+
 Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
 * Valor usado: R$ 30,00 (+5,60%)
 * Mensagens: 8 (+14,25%)
@@ -410,11 +447,25 @@ Obs.:
         return Promise.resolve({
           data: {
             ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
-            campaigns: [{ id_meta_campaign: 'cmp_1', name: 'Campanha A' }],
-            adsets: [{ id_meta_adset: 'ads_1', name: 'AdSet A' }],
+            campaigns: [
+              {
+                id_meta_campaign: 'cmp_1',
+                name: 'Campanha A',
+                status_display: 'ATIVO',
+                display_name: 'Campanha A - ATIVO',
+              },
+            ],
+            adsets: [
+              {
+                id_meta_adset: 'ads_1',
+                name: 'AdSet A',
+                status_display: 'DESATIVADO',
+                display_name: 'AdSet A - DESATIVADO',
+              },
+            ],
             ads: [
-              { id_meta_ad: 'ad_1', name: 'Ad A' },
-              { id_meta_ad: 'ad_2', name: 'Ad B' },
+              { id_meta_ad: 'ad_1', name: 'Ad A', status_display: 'ATIVO', display_name: 'Ad A - ATIVO' },
+              { id_meta_ad: 'ad_2', name: 'Ad B', status_display: 'DESATIVADO', display_name: 'Ad B - DESATIVADO' },
             ],
           },
         })
