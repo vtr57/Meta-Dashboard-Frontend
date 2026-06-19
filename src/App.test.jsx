@@ -328,11 +328,11 @@ describe('App frontend flows', () => {
     expect(screen.getByText('Impressão Total')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Geral' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Específica' })).toHaveAttribute('aria-selected', 'false')
-    fireEvent.focus(screen.getByLabelText('Filtro de campaign'))
+    fireEvent.click(screen.getByLabelText('Filtro de campaign'))
     expect(await screen.findByRole('button', { name: 'Campanha A - ATIVO' })).toBeInTheDocument()
-    fireEvent.focus(screen.getByLabelText('Filtro de adset'))
+    fireEvent.click(screen.getByLabelText('Filtro de adset'))
     expect(await screen.findByRole('button', { name: 'AdSet A - DESATIVADO' })).toBeInTheDocument()
-    fireEvent.focus(screen.getByLabelText('Filtro de ads'))
+    fireEvent.click(screen.getByLabelText('Filtro de ads'))
     expect(await screen.findByRole('button', { name: 'Ad A - ATIVO' })).toBeInTheDocument()
   })
 
@@ -411,7 +411,7 @@ describe('App frontend flows', () => {
     expect(screen.getByText('Cliques no link')).toBeInTheDocument()
     expect(screen.getByLabelText('Data inicial do relatorio')).toHaveValue(expectedDateStart)
     expect(screen.getByLabelText('Data final do relatorio')).toHaveValue(expectedDateEnd)
-    fireEvent.focus(screen.getByLabelText('Filtro de campaign'))
+    fireEvent.click(screen.getByLabelText('Filtro de campaign'))
     expect(await screen.findByRole('button', { name: 'Campanha A - ATIVO' })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText((_, element) => element?.textContent === '26,67%')).toBeInTheDocument()
@@ -439,6 +439,67 @@ Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas camp
 
 Obs.: 
 `)
+    })
+  })
+
+  it('allows selecting multiple accounts in relatorios filters', async () => {
+    setRoute('/app/relatorios')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 33, username: 'report-multi-user' } } })
+      }
+      if (url === '/api/meta/filters') {
+        return Promise.resolve({
+          data: {
+            ad_accounts: [
+              { id_meta_ad_account: 'act_1', name: 'Conta Principal' },
+              { id_meta_ad_account: 'act_2', name: 'Conta Secundaria' },
+            ],
+            campaigns: [
+              {
+                id_meta_campaign: 'cmp_1',
+                name: 'Campanha A',
+                status_display: 'ATIVO',
+                display_name: 'Campanha A - ATIVO',
+              },
+            ],
+          },
+        })
+      }
+      if (url === '/api/meta/report-summary') {
+        return Promise.resolve({
+          data: {
+            metrics: {
+              valor_usado: 40,
+              resultados: 10,
+              custo_por_resultado: 4,
+              cpc_link: 1,
+              ctr_link: 10,
+              taxa_video_3s_por_impressoes: 20,
+              tx_conversao_envio_mensagem: 25,
+              cpm: 100,
+              alcance: 200,
+              frequencia: 2,
+              impressoes: 400,
+              cliques_link: 40,
+            },
+            metric_changes: {},
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Relatorios' })).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Filtro de conta de anuncio'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Conta Principal (act_1)' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Conta Secundaria (act_2)' }))
+    await waitFor(() => {
+      expect(screen.getByLabelText('Filtro de conta de anuncio')).toHaveTextContent('2')
+      expect(screen.getByText('2 contas selecionadas')).toBeInTheDocument()
     })
   })
 

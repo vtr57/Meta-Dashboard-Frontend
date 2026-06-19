@@ -119,10 +119,11 @@ function buildMetricDisplay(metric, metrics, metricChanges) {
   }
 }
 
-function findItemLabel(items, value, fallback) {
-  if (!value) return fallback
-  const selected = items.find((item) => item.id === value)
-  return selected?.label || value
+function buildSelectionSummary(items, selectedIds, emptyLabel, singularLabel, pluralLabel) {
+  if (!selectedIds?.length) return emptyLabel
+  const selectedItems = items.filter((item) => selectedIds.includes(item.id))
+  if (selectedItems.length === 1) return selectedItems[0]?.label || singularLabel
+  return `${selectedItems.length} ${pluralLabel}`
 }
 
 function buildMetricTextWithDelta(metric, metrics, metricChanges) {
@@ -155,8 +156,8 @@ Obs.:
 export default function RelatoriosPage() {
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), [])
   const [filters, setFilters] = useState({
-    ad_account_id: '',
-    campaign_id: '',
+    ad_account_ids: [],
+    campaign_ids: [],
     date_start: defaultDateRange.date_start,
     date_end: defaultDateRange.date_end,
   })
@@ -178,25 +179,42 @@ export default function RelatoriosPage() {
     [options.campaigns],
   )
   const selectedAccountLabel = useMemo(
-    () => findItemLabel(adAccountItems, filters.ad_account_id, 'Todas as contas acessiveis'),
-    [adAccountItems, filters.ad_account_id],
+    () =>
+      buildSelectionSummary(
+        adAccountItems,
+        filters.ad_account_ids,
+        'Todas as contas acessiveis',
+        'Conta selecionada',
+        'contas selecionadas',
+      ),
+    [adAccountItems, filters.ad_account_ids],
   )
   const selectedCampaignLabel = useMemo(
-    () => findItemLabel(campaignItems, filters.campaign_id, 'Todas as campaigns da selecao'),
-    [campaignItems, filters.campaign_id],
+    () =>
+      buildSelectionSummary(
+        campaignItems,
+        filters.campaign_ids,
+        'Todas as campaigns da selecao',
+        'Campaign selecionada',
+        'campaigns selecionadas',
+      ),
+    [campaignItems, filters.campaign_ids],
   )
   const reportAccountName = useMemo(() => {
-    if (!filters.ad_account_id) {
+    if (filters.ad_account_ids.length === 0) {
       if (options.ad_accounts.length === 1) {
         const singleName = String(options.ad_accounts[0]?.name || '').trim()
         return singleName || 'Conta de anúncio'
       }
       return 'Conta de anúncio'
     }
-    const selected = options.ad_accounts.find((item) => item?.id_meta_ad_account === filters.ad_account_id)
+    if (filters.ad_account_ids.length > 1) {
+      return `${filters.ad_account_ids.length} contas selecionadas`
+    }
+    const selected = options.ad_accounts.find((item) => item?.id_meta_ad_account === filters.ad_account_ids[0])
     const name = String(selected?.name || '').trim()
     return name || selectedAccountLabel || 'Conta de anúncio'
-  }, [filters.ad_account_id, options.ad_accounts, selectedAccountLabel])
+  }, [filters.ad_account_ids, options.ad_accounts, selectedAccountLabel])
   const generatedWhatsappMessage = useMemo(
     () => buildWhatsappReportMessage({ accountName: reportAccountName, metrics, metricChanges }),
     [metricChanges, metrics, reportAccountName],
@@ -207,7 +225,7 @@ export default function RelatoriosPage() {
     setErrorMsg('')
     try {
       const params = {}
-      if (filters.ad_account_id) params.ad_account_id = filters.ad_account_id
+      if (filters.ad_account_ids.length > 0) params.ad_account_id = filters.ad_account_ids
       const response = await api.get('/api/meta/filters', { params })
       setOptions({
         ad_accounts: response.data?.ad_accounts || [],
@@ -219,7 +237,7 @@ export default function RelatoriosPage() {
     } finally {
       setFiltersLoading(false)
     }
-  }, [filters.ad_account_id])
+  }, [filters.ad_account_ids])
 
   const loadReport = useCallback(async () => {
     setReportLoading(true)
@@ -229,8 +247,8 @@ export default function RelatoriosPage() {
         date_start: filters.date_start,
         date_end: filters.date_end,
       }
-      if (filters.ad_account_id) params.ad_account_id = filters.ad_account_id
-      if (filters.campaign_id) params.campaign_id = filters.campaign_id
+      if (filters.ad_account_ids.length > 0) params.ad_account_id = filters.ad_account_ids
+      if (filters.campaign_ids.length > 0) params.campaign_id = filters.campaign_ids
       const response = await api.get('/api/meta/report-summary', { params })
       setMetrics(response.data?.metrics || null)
       setMetricChanges(response.data?.metric_changes || {})
@@ -259,8 +277,8 @@ export default function RelatoriosPage() {
   const updateFilter = (field, value) => {
     setFilters((prev) => {
       const next = { ...prev, [field]: value }
-      if (field === 'ad_account_id') {
-        next.campaign_id = ''
+      if (field === 'ad_account_ids') {
+        next.campaign_ids = []
       }
       return next
     })
@@ -297,20 +315,22 @@ export default function RelatoriosPage() {
 
       <div className="filter-grid meta-filter-grid reports-filter-grid">
         <SearchableSelect
-          value={filters.ad_account_id}
+          value={filters.ad_account_ids}
           items={adAccountItems}
-          onChange={(nextValue) => updateFilter('ad_account_id', nextValue)}
+          onChange={(nextValue) => updateFilter('ad_account_ids', nextValue)}
           placeholder="Todas as contas"
           ariaLabel="Filtro de conta de anuncio"
           disabled={filtersLoading}
+          multiple
         />
         <SearchableSelect
-          value={filters.campaign_id}
+          value={filters.campaign_ids}
           items={campaignItems}
-          onChange={(nextValue) => updateFilter('campaign_id', nextValue)}
+          onChange={(nextValue) => updateFilter('campaign_ids', nextValue)}
           placeholder="Todas as campaigns"
           ariaLabel="Filtro de campaign"
           disabled={filtersLoading}
+          multiple
         />
         <input
           type="date"

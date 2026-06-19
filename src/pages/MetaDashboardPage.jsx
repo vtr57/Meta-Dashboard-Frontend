@@ -321,13 +321,20 @@ function normalizeSeriesToDateRange(series, dateStart, dateEnd) {
   return normalized
 }
 
+function buildSelectionSummary(items, selectedIds, emptyLabel, pluralLabel) {
+  if (!selectedIds?.length) return emptyLabel
+  const selectedItems = items.filter((item) => selectedIds.includes(item.id))
+  if (selectedItems.length === 1) return selectedItems[0]?.label || selectedIds[0]
+  return `${selectedItems.length} ${pluralLabel}`
+}
+
 export default function MetaDashboardPage() {
   const [activeTab, setActiveTab] = useState('general')
   const [filters, setFilters] = useState({
-    ad_account_id: '',
-    campaign_id: '',
-    adset_id: '',
-    ad_id: '',
+    ad_account_ids: [],
+    campaign_ids: [],
+    adset_ids: [],
+    ad_ids: [],
     date_start: toInputDate(daysAgo(30)),
     date_end: toInputDate(new Date()),
   })
@@ -399,19 +406,18 @@ export default function MetaDashboardPage() {
     [options.ads],
   )
   const selectedAdAccountLabel = useMemo(() => {
-    if (!filters.ad_account_id) return ''
-    const selected = adAccountItems.find((item) => item.id === filters.ad_account_id)
-    return selected?.label || filters.ad_account_id
-  }, [adAccountItems, filters.ad_account_id])
+    return buildSelectionSummary(adAccountItems, filters.ad_account_ids, 'Nenhuma conta selecionada', 'contas selecionadas')
+  }, [adAccountItems, filters.ad_account_ids])
+  const singleSelectedAdAccountId = filters.ad_account_ids.length === 1 ? filters.ad_account_ids[0] : ''
 
   const loadFilters = useCallback(async () => {
     setFiltersLoading(true)
     setErrorMsg('')
     try {
       const params = {}
-      if (filters.ad_account_id) params.ad_account_id = filters.ad_account_id
-      if (filters.campaign_id) params.campaign_id = filters.campaign_id
-      if (filters.adset_id) params.adset_id = filters.adset_id
+      if (filters.ad_account_ids.length > 0) params.ad_account_id = filters.ad_account_ids
+      if (filters.campaign_ids.length > 0) params.campaign_id = filters.campaign_ids
+      if (filters.adset_ids.length > 0) params.adset_id = filters.adset_ids
       const response = await api.get('/api/meta/filters', { params })
       setOptions({
         ad_accounts: response.data?.ad_accounts || [],
@@ -425,7 +431,7 @@ export default function MetaDashboardPage() {
     } finally {
       setFiltersLoading(false)
     }
-  }, [filters.ad_account_id, filters.campaign_id, filters.adset_id])
+  }, [filters.ad_account_ids, filters.campaign_ids, filters.adset_ids])
 
   const loadDashboardData = useCallback(async () => {
     setDataLoading(true)
@@ -435,10 +441,10 @@ export default function MetaDashboardPage() {
         date_start: filters.date_start,
         date_end: filters.date_end,
       }
-      if (filters.ad_account_id) params.ad_account_id = filters.ad_account_id
-      if (filters.campaign_id) params.campaign_id = filters.campaign_id
-      if (filters.adset_id) params.adset_id = filters.adset_id
-      if (filters.ad_id) params.ad_id = filters.ad_id
+      if (filters.ad_account_ids.length > 0) params.ad_account_id = filters.ad_account_ids
+      if (filters.campaign_ids.length > 0) params.campaign_id = filters.campaign_ids
+      if (filters.adset_ids.length > 0) params.adset_id = filters.adset_ids
+      if (filters.ad_ids.length > 0) params.ad_id = filters.ad_ids
 
       const [timeseriesRes, kpisRes] = await Promise.all([
         api.get('/api/meta/timeseries', { params }),
@@ -462,9 +468,9 @@ export default function MetaDashboardPage() {
         date_start: filters.date_start,
         date_end: filters.date_end,
       }
-      if (filters.ad_account_id) params.ad_account_id = filters.ad_account_id
-      if (filters.campaign_id) params.campaign_id = filters.campaign_id
-      if (filters.adset_id) params.adset_id = filters.adset_id
+      if (filters.ad_account_ids.length > 0) params.ad_account_id = filters.ad_account_ids
+      if (filters.campaign_ids.length > 0) params.campaign_id = filters.campaign_ids
+      if (filters.adset_ids.length > 0) params.adset_id = filters.adset_ids
 
       const response = await api.get('/api/meta/specific-insights', { params })
       setSpecificSeriesByAd(response.data?.timeseries_by_ad || [])
@@ -475,10 +481,10 @@ export default function MetaDashboardPage() {
     } finally {
       setSpecificLoading(false)
     }
-  }, [filters.ad_account_id, filters.campaign_id, filters.adset_id, filters.date_end, filters.date_start])
+  }, [filters.ad_account_ids, filters.campaign_ids, filters.adset_ids, filters.date_end, filters.date_start])
 
   const loadAnotacoes = useCallback(async () => {
-    if (!filters.ad_account_id) {
+    if (!singleSelectedAdAccountId) {
       setAnotacoes([])
       setAnotacoesError('')
       setAnotacoesFeedback('')
@@ -489,7 +495,7 @@ export default function MetaDashboardPage() {
     setAnotacoesError('')
     try {
       const response = await api.get('/api/meta/anotacoes', {
-        params: { ad_account_id: filters.ad_account_id },
+        params: { ad_account_id: singleSelectedAdAccountId },
       })
       setAnotacoes(response.data?.anotacoes || [])
     } catch (error) {
@@ -498,7 +504,7 @@ export default function MetaDashboardPage() {
     } finally {
       setAnotacoesLoading(false)
     }
-  }, [filters.ad_account_id])
+  }, [singleSelectedAdAccountId])
 
   const loadFiltersRef = useRef(loadFilters)
   const loadDashboardDataRef = useRef(loadDashboardData)
@@ -621,24 +627,24 @@ export default function MetaDashboardPage() {
   }
 
   const updateFilter = (field, value) => {
-    if (field === 'ad_account_id') {
+    if (field === 'ad_account_ids') {
       setAnotacaoTexto('')
       setAnotacoesError('')
       setAnotacoesFeedback('')
     }
     setFilters((prev) => {
       const next = { ...prev, [field]: value }
-      if (field === 'ad_account_id') {
-        next.campaign_id = ''
-        next.adset_id = ''
-        next.ad_id = ''
+      if (field === 'ad_account_ids') {
+        next.campaign_ids = []
+        next.adset_ids = []
+        next.ad_ids = []
       }
-      if (field === 'campaign_id') {
-        next.adset_id = ''
-        next.ad_id = ''
+      if (field === 'campaign_ids') {
+        next.adset_ids = []
+        next.ad_ids = []
       }
-      if (field === 'adset_id') {
-        next.ad_id = ''
+      if (field === 'adset_ids') {
+        next.ad_ids = []
       }
       return next
     })
@@ -646,9 +652,9 @@ export default function MetaDashboardPage() {
 
   const handleSalvarAnotacao = async () => {
     const observacoes = anotacaoTexto.trim()
-    if (!filters.ad_account_id) {
+    if (!singleSelectedAdAccountId) {
       setAnotacoesFeedback('')
-      setAnotacoesError('Selecione um ad account para salvar anotacoes.')
+      setAnotacoesError('Selecione apenas uma conta para salvar anotacoes.')
       return
     }
     if (!observacoes) {
@@ -662,7 +668,7 @@ export default function MetaDashboardPage() {
     setAnotacoesFeedback('')
     try {
       const response = await api.post('/api/meta/anotacoes', {
-        id_meta_ad_account: filters.ad_account_id,
+        id_meta_ad_account: singleSelectedAdAccountId,
         observacoes,
       })
       const novaAnotacao = response.data?.anotacao
@@ -730,37 +736,41 @@ export default function MetaDashboardPage() {
 
       <div className={`filter-grid meta-filter-grid ${activeTab === 'specific' ? 'is-specific' : ''}`}>
         <SearchableSelect
-          value={filters.ad_account_id}
+          value={filters.ad_account_ids}
           items={adAccountItems}
-          onChange={(nextValue) => updateFilter('ad_account_id', nextValue)}
+          onChange={(nextValue) => updateFilter('ad_account_ids', nextValue)}
           placeholder="Todos os ad accounts"
           ariaLabel="Filtro de ad account"
           disabled={filtersLoading}
+          multiple
         />
         <SearchableSelect
-          value={filters.campaign_id}
+          value={filters.campaign_ids}
           items={campaignItems}
-          onChange={(nextValue) => updateFilter('campaign_id', nextValue)}
+          onChange={(nextValue) => updateFilter('campaign_ids', nextValue)}
           placeholder="Todas as campaigns"
           ariaLabel="Filtro de campaign"
           disabled={filtersLoading}
+          multiple
         />
         <SearchableSelect
-          value={filters.adset_id}
+          value={filters.adset_ids}
           items={adsetItems}
-          onChange={(nextValue) => updateFilter('adset_id', nextValue)}
+          onChange={(nextValue) => updateFilter('adset_ids', nextValue)}
           placeholder="Todos os adsets"
           ariaLabel="Filtro de adset"
           disabled={filtersLoading}
+          multiple
         />
         {activeTab === 'general' ? (
           <SearchableSelect
-            value={filters.ad_id}
+            value={filters.ad_ids}
             items={adItems}
-            onChange={(nextValue) => updateFilter('ad_id', nextValue)}
+            onChange={(nextValue) => updateFilter('ad_ids', nextValue)}
             placeholder="Todos os ads"
             ariaLabel="Filtro de ads"
             disabled={filtersLoading}
+            multiple
           />
         ) : null}
         <input
@@ -886,14 +896,14 @@ export default function MetaDashboardPage() {
                 value={anotacaoTexto}
                 onChange={(event) => setAnotacaoTexto(event.target.value)}
                 placeholder="Escreva uma observacao sobre esta conta..."
-                disabled={!filters.ad_account_id || anotacoesSubmitting}
+                disabled={!singleSelectedAdAccountId || anotacoesSubmitting}
               />
               <div className="meta-notes-actions">
                 <button
                   type="button"
                   className="primary-btn"
                   onClick={handleSalvarAnotacao}
-                  disabled={!filters.ad_account_id || anotacoesSubmitting}
+                  disabled={!singleSelectedAdAccountId || anotacoesSubmitting}
                 >
                   {anotacoesSubmitting ? 'Salvando...' : 'Salvar'}
                 </button>
@@ -902,8 +912,8 @@ export default function MetaDashboardPage() {
             </article>
             <article className="meta-notes-card">
               <h3>Anotações da conta</h3>
-              {!filters.ad_account_id ? (
-                <p className="hint-neutral">Selecione um ad account para visualizar as anotacoes.</p>
+              {!singleSelectedAdAccountId ? (
+                <p className="hint-neutral">Selecione apenas uma conta para visualizar as anotacoes.</p>
               ) : anotacoesLoading ? (
                 <p className="hint-neutral">Carregando anotacoes...</p>
               ) : anotacoes.length === 0 ? (
