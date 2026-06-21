@@ -1,22 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-export function toSearchableItems(rows, idField) {
-  return (rows || [])
-    .map((row) => {
-      const id = String(row?.[idField] || '').trim()
-      if (!id) return null
-      const name = String(row?.name || '').trim()
-      const displayName = String(row?.display_name || '').trim()
-      const label = displayName || (name && name !== id ? `${name} (${id})` : id)
-      return {
-        id,
-        label,
-        searchIndex: `${name} ${displayName} ${row?.status_display || ''} ${id}`.toLowerCase(),
-      }
-    })
-    .filter(Boolean)
-}
-
 function buildMultiValueSummary(items, values, placeholder) {
   const selectedItems = items.filter((item) => values.includes(item.id))
   if (selectedItems.length === 0) return placeholder
@@ -63,6 +46,11 @@ function SearchableSelect({
     if (!normalized) return items.slice(0, 80)
     return items.filter((item) => item.searchIndex.includes(normalized)).slice(0, 80)
   }, [items, query])
+  const singleSelectedLabel = useMemo(() => {
+    if (multiple) return ''
+    const selected = items.find((item) => item.id === selectedValues)
+    return selected ? selected.label : ''
+  }, [items, multiple, selectedValues])
 
   const selectValue = useCallback(
     (nextValue) => {
@@ -115,12 +103,6 @@ function SearchableSelect({
     const selected = items.find((item) => item.id === selectedValues)
     setQuery(selected ? selected.label : '')
   }, [items, multiple, onChange, query, selectedValues])
-
-  useEffect(() => {
-    if (multiple) return
-    const selected = items.find((item) => item.id === selectedValues)
-    setQuery(selected ? selected.label : '')
-  }, [items, multiple, selectedValues])
 
   const handleInputBlur = () => {
     if (multiple) return
@@ -238,9 +220,12 @@ function SearchableSelect({
     <div className="searchable-select" ref={rootRef}>
       <input
         type="text"
-        value={query}
+        value={menuOpen ? query : singleSelectedLabel}
         onChange={handleInputChange}
-        onFocus={() => setMenuOpen(true)}
+        onFocus={() => {
+          setQuery(singleSelectedLabel)
+          setMenuOpen(true)
+        }}
         onBlur={handleInputBlur}
         onKeyDown={handleInputKeyDown}
         placeholder={placeholder}

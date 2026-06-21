@@ -427,14 +427,15 @@ describe('App frontend flows', () => {
     expect(screen.getByText('sem base anterior')).toHaveClass('reports-metric-delta', 'reports-metric-delta-neutral')
     expect(screen.getByRole('button', { name: 'Copiar mensagem para WhatsApp' })).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByLabelText('Mensagem de relatório para WhatsApp')).toHaveValue(`*Relatório Meta Ads Conta Principal:*
+      const reportValue = screen.getByLabelText('Mensagem de relatório para WhatsApp').value.replace(/\u00a0/g, ' ')
+      expect(reportValue).toBe(`*Relatório Meta Ads Conta Principal:*
 
 Olá, bom dia! Segue o relatório da semana passada no Meta Ads para nossas campanhas de mensagens:
-* Valor usado: R$ 30,00 (+5,60%)
+* Valor usado: R$ 30,00 (+5,60%)
 * Mensagens: 8 (+14,25%)
-* Custo por mensagens: R$ 3,75 (-3,10%)
+* Custo por mensagens: R$ 3,75 (-3,10%)
 * CTR: 10,00% (+2,35%)
-* CPM: R$ 100,00 (+8,40%)
+* CPM: R$ 100,00 (+8,40%)
 * Tx de mensagem: 26,67% (-4,20%)
 
 Obs.: 
@@ -501,6 +502,100 @@ Obs.:
       expect(screen.getByLabelText('Filtro de conta de anuncio')).toHaveTextContent('2')
       expect(screen.getByText('2 contas selecionadas')).toBeInTheDocument()
     })
+  })
+
+  it('renders analise estatistica with filters, tabs and modular empty states', async () => {
+    setRoute('/app/analise-estatistica')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 35, username: 'statistics-user' } } })
+      }
+      if (url === '/api/meta/filters') {
+        return Promise.resolve({
+          data: {
+            ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
+            campaigns: [{ id_meta_campaign: 'cmp_1', name: 'Campanha A', display_name: 'Campanha A - ATIVO' }],
+            adsets: [{ id_meta_adset: 'ads_1', name: 'Conjunto A', display_name: 'Conjunto A - ATIVO' }],
+            ads: [{ id_meta_ad: 'ad_1', name: 'Anúncio A', display_name: 'Anúncio A - ATIVO' }],
+          },
+        })
+      }
+      if (url === '/api/statistics/analysis') {
+        return Promise.resolve({
+          data: {
+            meta: {
+              analysis_level: 'ad_account',
+              result_semantics: 'Resultados refletem o objetivo configurado na campanha.',
+            },
+            overview: {
+              available: true,
+              metrics: [
+                {
+                  metric: 'spend',
+                  label: 'Investimento',
+                  current_value: 150,
+                  previous_value: 170,
+                  percent_change: -11.76,
+                  direction: 'negative',
+                  interpretation: 'Investimento piorou 11,76% em relação ao período anterior.',
+                },
+                {
+                  metric: 'ctr',
+                  label: 'CTR',
+                  current_value: 3.2,
+                  previous_value: 2.8,
+                  percent_change: 14.28,
+                  direction: 'positive',
+                  interpretation: 'CTR melhorou 14,28% em relação ao período anterior.',
+                },
+              ],
+            },
+            stability: { available: false, message: 'Amostra insuficiente.', items: [] },
+            funnel: { available: false, message: 'Não há dados suficientes.', steps: [] },
+            segments: {
+              available: false,
+              message: 'Breakdowns de idade, gênero, plataforma e posicionamento não estão persistidos no banco atual.',
+              items: [],
+            },
+            ab_tests: { available: false, message: 'Selecione pelo menos duas entidades.', comparisons: [] },
+            saturation: { available: false, message: 'Não há dados suficientes.', items: [] },
+            cohorts: { available: false, message: 'Dados comerciais insuficientes para análise de coorte completa.', items: [] },
+            trends: { available: false, message: 'Não há série diária.', metrics: [], anomalies: [] },
+            correlations: { available: false, message: 'Ainda não há dias suficientes.', items: [] },
+            executive_insights: {
+              available: true,
+              items: [
+                {
+                  type: 'info',
+                  title: 'Sem alertas estatísticos fortes',
+                  description: 'A amostra atual não apresentou evidências suficientes.',
+                  evidence: [],
+                  suggested_action: 'Monitorar mais dias.',
+                },
+              ],
+            },
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Análise Estatística' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Análise Estatística/i })).toBeInTheDocument()
+    expect(screen.getByLabelText('Filtro estatístico de conta')).toBeInTheDocument()
+    expect(screen.getByLabelText('Filtro estatístico de campanha')).toBeInTheDocument()
+    expect(screen.getByLabelText('Filtro estatístico de conjunto')).toBeInTheDocument()
+    expect(screen.getByLabelText('Filtro estatístico de anúncio')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Atualizar análise' })).toBeInTheDocument()
+    expect(await screen.findByText('Investimento')).toBeInTheDocument()
+    expect(screen.getByText(/150,00/)).toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(10)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Segmentações' }))
+    expect(await screen.findByText(/Breakdowns de idade, gênero/)).toBeInTheDocument()
   })
 
   it('hides ad filter and renders specific tab data in meta dashboard', async () => {

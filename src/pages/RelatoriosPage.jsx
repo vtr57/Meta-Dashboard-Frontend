@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import SearchableSelect, { toSearchableItems } from '../components/SearchableSelect'
+import SearchableSelect from '../components/SearchableSelect'
+import { toSearchableItems } from '../components/searchableSelectUtils'
 import api from '../lib/api'
 import { daysAgo, formatCurrency, formatDecimal, formatNumber, logUiError, toInputDate } from './pageUtils'
 

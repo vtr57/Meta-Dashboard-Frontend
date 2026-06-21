@@ -248,6 +248,8 @@ export default function MetaSpecificTabPanel({ seriesByAd, rows, loading, errorM
 
   useEffect(() => {
     const availableAdIds = rows.map((row) => row?.ad_id).filter(Boolean)
+    // Mantém a seleção do gráfico consistente quando o backend altera as linhas disponíveis.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedAdIds((current) => current.filter((adId) => availableAdIds.includes(adId)))
   }, [rows])
 

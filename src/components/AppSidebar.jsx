@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 function AppSidebar({ user, onLogout }) {
@@ -7,11 +7,7 @@ function AppSidebar({ user, onLogout }) {
   const [clientesMenuOpen, setClientesMenuOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
-  useEffect(() => {
-    if (clientesRouteActive) {
-      setClientesMenuOpen(true)
-    }
-  }, [clientesRouteActive])
+  const clientesMenuVisible = clientesRouteActive || clientesMenuOpen
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -68,23 +64,32 @@ function AppSidebar({ user, onLogout }) {
             <span>Relatorios</span>
           </span>
         </NavLink>
+        <NavLink
+          to="/app/analise-estatistica"
+          className={({ isActive }) => (isActive ? 'sidebar-link active' : 'sidebar-link')}
+        >
+          <span className="sidebar-link-content">
+            <i className="fa-solid fa-chart-column sidebar-link-icon" aria-hidden="true" />
+            <span>Análise Estatística</span>
+          </span>
+        </NavLink>
         <div className="sidebar-group">
           <button
             type="button"
             className={`sidebar-link sidebar-toggle ${
-              clientesRouteActive || clientesMenuOpen ? 'active' : ''
+              clientesMenuVisible ? 'active' : ''
             }`}
-            onClick={() => setClientesMenuOpen((prev) => !prev)}
-            aria-expanded={clientesMenuOpen}
+            onClick={() => setClientesMenuOpen((prev) => (clientesRouteActive ? false : !prev))}
+            aria-expanded={clientesMenuVisible}
             aria-controls="clientes-submenu"
           >
             <span className="sidebar-link-content">
               <i className="fa-solid fa-users sidebar-link-icon" aria-hidden="true" />
               <span>Clientes</span>
             </span>
-            <span className="sidebar-toggle-icon">{clientesMenuOpen ? '▾' : '▸'}</span>
+            <span className="sidebar-toggle-icon">{clientesMenuVisible ? '▾' : '▸'}</span>
           </button>
-          {clientesMenuOpen ? (
+          {clientesMenuVisible ? (
             <div id="clientes-submenu" className="sidebar-submenu">
               <NavLink
                 to="/app/clientes/cadastrar"
