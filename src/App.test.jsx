@@ -578,6 +578,84 @@ Obs.:
           },
         })
       }
+      if (url === '/api/statistics/clustering') {
+        return Promise.resolve({
+          data: {
+            available: true,
+            summary: {
+              total_entities: 6,
+              clusters_count: 2,
+              most_efficient_cluster_label: 'Grupo promissor',
+              highest_risk_cluster_label: 'Alto gasto e baixo retorno',
+            },
+            features_used: [
+              { key: 'spend', label: 'Investimento' },
+              { key: 'ctr', label: 'CTR' },
+            ],
+            warnings: ['A quantidade de clusters foi reduzida para 2 porque a amostra possui apenas 6 entidades.'],
+            clusters: [
+              {
+                cluster_id: 0,
+                label: 'Grupo promissor',
+                size: 3,
+                summary: {
+                  avg_ctr: 4.5,
+                  avg_results: 18,
+                  avg_cost_per_result: 7.2,
+                },
+                interpretation: 'Grupo com bons sinais de eficiência.',
+                suggested_action: 'Avaliar escala gradual.',
+              },
+              {
+                cluster_id: 1,
+                label: 'Alto gasto e baixo retorno',
+                size: 3,
+                summary: {
+                  avg_ctr: 1.1,
+                  avg_results: 4,
+                  avg_cost_per_result: 48,
+                },
+                interpretation: 'Grupo com investimento alto e baixo retorno.',
+                suggested_action: 'Revisar oferta e criativos.',
+              },
+            ],
+            items: [
+              {
+                id: 'cmp_1',
+                name: 'Campanha A',
+                cluster_id: 0,
+                spend: 120,
+                impressions: 3000,
+                clicks: 135,
+                ctr: 4.5,
+                cpc: 0.89,
+                results: 18,
+                cost_per_result: 6.67,
+                conversion_rate: 13.33,
+                frequency: 1.8,
+                cluster_distance: 0.42,
+              },
+            ],
+            pca: {
+              available: false,
+              message: 'PCA indisponível no mock.',
+              points: [],
+            },
+            executive_insights: {
+              available: true,
+              items: [
+                {
+                  type: 'success',
+                  title: 'Cluster promissor encontrado',
+                  description: 'Um grupo apresenta boa eficiência relativa.',
+                  evidence: ['CTR acima da média'],
+                  suggested_action: 'Avaliar escala gradual.',
+                },
+              ],
+            },
+          },
+        })
+      }
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
 
@@ -592,10 +670,31 @@ Obs.:
     expect(screen.getByRole('button', { name: 'Atualizar análise' })).toBeInTheDocument()
     expect(await screen.findByText('Investimento')).toBeInTheDocument()
     expect(screen.getByText(/150,00/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab')).toHaveLength(10)
+    expect(screen.getAllByRole('tab')).toHaveLength(11)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Segmentações' }))
     expect(await screen.findByText(/Breakdowns de idade, gênero/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Clusterização' }))
+    expect(await screen.findByRole('heading', { name: 'Clusterização' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Tipo de entidade')).toHaveValue('campaign')
+    expect(await screen.findByRole('heading', { name: 'Grupo promissor' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Alto gasto e baixo retorno' })).toBeInTheDocument()
+    expect(screen.getByText('Campanha A')).toBeInTheDocument()
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/statistics/clustering',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          entity_type: 'campaign',
+          algorithm: 'kmeans',
+          clusters: 3,
+          normalize: true,
+        }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Insights Executivos' }))
+    expect(await screen.findByText('Cluster promissor encontrado')).toBeInTheDocument()
   })
 
   it('hides ad filter and renders specific tab data in meta dashboard', async () => {

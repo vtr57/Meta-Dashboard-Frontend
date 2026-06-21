@@ -1,3 +1,4 @@
+import Chart from 'chart.js/auto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SearchableSelect from '../components/SearchableSelect'
 import { toSearchableItems } from '../components/searchableSelectUtils'
@@ -14,11 +15,13 @@ const TABS = [
   ['cohorts', 'Coortes'],
   ['trends', 'Tendência e Anomalias'],
   ['correlations', 'Correlação'],
+  ['clustering', 'Clusterização'],
   ['executive_insights', 'Insights Executivos'],
 ]
 
 const CURRENCY_METRICS = new Set(['spend', 'cpc', 'cpm', 'cost_per_result'])
-const PERCENT_METRICS = new Set(['ctr', 'click_to_result'])
+const PERCENT_METRICS = new Set(['ctr', 'click_to_result', 'conversion_rate'])
+const CLUSTER_COLORS = ['#0b4ea2', '#2f8b58', '#d18a16', '#8a4fb5', '#c94b4b']
 
 function getDefaultDateRange() {
   return {
@@ -245,7 +248,297 @@ function InsightsPanel({ data }) {
   )
 }
 
-function renderPanel(activeTab, analysis) {
+function ClusterScatterPlot({ data }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    chartRef.current?.destroy()
+    chartRef.current = null
+    if (!data?.available || !canvasRef.current || !data.points?.length) return undefined
+
+    const grouped = data.points.reduce((groups, point) => {
+      const clusterId = Number(point.cluster_id || 0)
+      groups[clusterId] = groups[clusterId] || []
+      groups[clusterId].push({
+        x: point.x,
+        y: point.y,
+        entityName: point.name,
+      })
+      return groups
+    }, {})
+    const context = canvasRef.current.getContext('2d')
+    chartRef.current = new Chart(context, {
+      type: 'scatter',
+      data: {
+        datasets: Object.entries(grouped).map(([clusterId, points]) => ({
+          label: `Cluster ${Number(clusterId) + 1}`,
+          data: points,
+          backgroundColor: CLUSTER_COLORS[Number(clusterId) % CLUSTER_COLORS.length],
+          borderColor: '#ffffff',
+          borderWidth: 1,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        })),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        parsing: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { usePointStyle: true, boxWidth: 8 },
+          },
+          tooltip: {
+            callbacks: {
+              label: (contextValue) => {
+                const point = contextValue.raw
+                return `${point.entityName}: ${formatDecimal(point.x, 2)}, ${formatDecimal(point.y, 2)}`
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'PCA 1' },
+            grid: { color: 'rgba(88, 118, 155, 0.12)' },
+          },
+          y: {
+            title: { display: true, text: 'PCA 2' },
+            grid: { color: 'rgba(88, 118, 155, 0.12)' },
+          },
+        },
+      },
+    })
+
+    return () => {
+      chartRef.current?.destroy()
+      chartRef.current = null
+    }
+  }, [data])
+
+  if (!data?.available) return <EmptyState message={data?.message || 'PCA indisponível para esta amostra.'} />
+  return (
+    <div className="statistics-cluster-chart" aria-label="Gráfico PCA dos clusters">
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
+function ClusteringPanel({
+  data,
+  config,
+  onConfigChange,
+  onRefresh,
+  loading,
+  errorMessage,
+}) {
+  if (loading && !data) return <p className="hint-neutral">Agrupando entidades por padrões de desempenho...</p>
+
+  return (
+    <div className="statistics-stack">
+      <section className="statistics-cluster-header">
+        <div>
+          <p className="statistics-eyebrow">Análise exploratória</p>
+          <h3>Clusterização</h3>
+          <p>Agrupe campanhas, conjuntos e anúncios para encontrar oportunidades e riscos semelhantes.</p>
+        </div>
+        <div className="statistics-cluster-controls">
+          <label>
+            <span>Tipo de entidade</span>
+            <select
+              value={config.entity_type}
+              onChange={(event) => onConfigChange('entity_type', event.target.value)}
+            >
+              <option value="campaign">Campanhas</option>
+              <option value="adset">Conjuntos</option>
+              <option value="ad">Anúncios</option>
+              <option value="lead" disabled>Leads — indisponível</option>
+            </select>
+          </label>
+          <label>
+            <span>Algoritmo</span>
+            <select value={config.algorithm} disabled>
+              <option value="kmeans">K-means</option>
+            </select>
+          </label>
+          <label>
+            <span>Clusters</span>
+            <select
+              value={config.clusters}
+              onChange={(event) => onConfigChange('clusters', Number(event.target.value))}
+            >
+              {[2, 3, 4, 5].map((value) => <option value={value} key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="statistics-normalize-control">
+            <input
+              type="checkbox"
+              checked={config.normalize}
+              onChange={(event) => onConfigChange('normalize', event.target.checked)}
+            />
+            Normalizar métricas
+          </label>
+          <button className="primary-btn" type="button" onClick={onRefresh} disabled={loading}>
+            {loading ? 'Analisando...' : 'Analisar grupos'}
+          </button>
+        </div>
+      </section>
+
+      {errorMessage ? <p className="hint-error">{errorMessage}</p> : null}
+      {!data?.available ? (
+        <EmptyState message={data?.message || 'Carregue a clusterização para visualizar os grupos.'} />
+      ) : (
+        <>
+          {data.warnings?.length ? (
+            <div className="statistics-cluster-warnings" role="status">
+              {data.warnings.map((warning) => (
+                <p key={warning}><i className="fa-solid fa-circle-info" aria-hidden="true" />{warning}</p>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="statistics-cluster-summary">
+            <article className="statistics-summary-card">
+              <p>Entidades analisadas</p>
+              <strong>{formatNumber(data.summary?.total_entities)}</strong>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Clusters encontrados</p>
+              <strong>{formatNumber(data.summary?.clusters_count)}</strong>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Mais eficiente</p>
+              <strong>{data.summary?.most_efficient_cluster_label || 'N/A'}</strong>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Maior risco</p>
+              <strong>{data.summary?.highest_risk_cluster_label || 'N/A'}</strong>
+            </article>
+          </div>
+
+          <div className="statistics-feature-row" aria-label="Features utilizadas">
+            <strong>Features</strong>
+            {data.features_used?.map((feature) => <span key={feature.key}>{feature.label}</span>)}
+          </div>
+
+          <section className="statistics-cluster-section">
+            <div className="statistics-section-heading">
+              <div>
+                <h3>Mapa dos grupos</h3>
+                <p>Proximidade no gráfico indica perfis de desempenho semelhantes, não causalidade.</p>
+              </div>
+              {data.pca?.explained_variance_ratio?.length ? (
+                <span className="statistics-status-badge">
+                  Variância explicada {formatDecimal(
+                    data.pca.explained_variance_ratio.reduce((total, value) => total + value, 0) * 100,
+                    1,
+                  )}%
+                </span>
+              ) : null}
+            </div>
+            <ClusterScatterPlot data={data.pca} />
+          </section>
+
+          <div className="statistics-cluster-grid">
+            {data.clusters?.map((cluster) => (
+              <article className="statistics-cluster-card" key={cluster.cluster_id}>
+                <header>
+                  <div>
+                    <p className="statistics-eyebrow">Cluster {cluster.cluster_id + 1}</p>
+                    <h3>{cluster.label}</h3>
+                  </div>
+                  <span
+                    className="statistics-cluster-dot"
+                    style={{ backgroundColor: CLUSTER_COLORS[cluster.cluster_id % CLUSTER_COLORS.length] }}
+                    aria-label={`${cluster.size} entidades`}
+                  />
+                </header>
+                <p>{cluster.interpretation}</p>
+                <div className="statistics-cluster-metrics">
+                  <span>Entidades <strong>{cluster.size}</strong></span>
+                  <span>CTR médio <strong>{formatMetricValue('ctr', cluster.summary?.avg_ctr)}</strong></span>
+                  <span>Resultados <strong>{formatMetricValue('results', cluster.summary?.avg_results)}</strong></span>
+                  <span>Custo/resultado <strong>{formatMetricValue('cost_per_result', cluster.summary?.avg_cost_per_result)}</strong></span>
+                </div>
+                <strong className="statistics-cluster-action">{cluster.suggested_action}</strong>
+              </article>
+            ))}
+          </div>
+
+          <section className="statistics-cluster-section">
+            <div className="statistics-section-heading">
+              <div>
+                <h3>Entidades clusterizadas</h3>
+                <p>Detalhes consolidados do período e distância relativa ao centro do grupo.</p>
+              </div>
+            </div>
+            <div className="statistics-table-wrap">
+              <table className="statistics-table statistics-cluster-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cluster</th>
+                    <th>Investimento</th>
+                    <th>Impressões</th>
+                    <th>Cliques</th>
+                    <th>CTR</th>
+                    <th>CPC</th>
+                    <th>Resultados</th>
+                    <th>Custo/resultado</th>
+                    <th>Conversão</th>
+                    <th>Frequência</th>
+                    <th>Distância</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items?.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.name}</td>
+                      <td>
+                        <span className="statistics-cluster-id">
+                          <i
+                            style={{ backgroundColor: CLUSTER_COLORS[item.cluster_id % CLUSTER_COLORS.length] }}
+                            aria-hidden="true"
+                          />
+                          {item.cluster_id + 1}
+                        </span>
+                      </td>
+                      <td>{formatMetricValue('spend', item.spend)}</td>
+                      <td>{formatMetricValue('impressions', item.impressions)}</td>
+                      <td>{formatMetricValue('clicks', item.clicks)}</td>
+                      <td>{formatMetricValue('ctr', item.ctr)}</td>
+                      <td>{formatMetricValue('cpc', item.cpc)}</td>
+                      <td>{formatMetricValue('results', item.results)}</td>
+                      <td>{formatMetricValue('cost_per_result', item.cost_per_result)}</td>
+                      <td>{formatMetricValue('conversion_rate', item.conversion_rate)}</td>
+                      <td>{formatMetricValue('frequency', item.frequency)}</td>
+                      <td>{formatDecimal(item.cluster_distance, 3)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
+function mergeExecutiveInsights(analysisInsights, clusteringInsights) {
+  const baseItems = analysisInsights?.items || []
+  const clusterItems = clusteringInsights?.available ? clusteringInsights.items || [] : []
+  if (!baseItems.length && !clusterItems.length) return analysisInsights
+  return {
+    available: true,
+    message: '',
+    items: [...clusterItems, ...baseItems],
+  }
+}
+
+function renderPanel(activeTab, analysis, clusteringContext) {
   if (activeTab === 'overview') return <OverviewPanel data={analysis?.overview} />
   if (activeTab === 'stability') return <StabilityPanel data={analysis?.stability} />
   if (activeTab === 'funnel') return <FunnelPanel data={analysis?.funnel} />
@@ -253,7 +546,17 @@ function renderPanel(activeTab, analysis) {
   if (activeTab === 'saturation') return <SaturationPanel data={analysis?.saturation} />
   if (activeTab === 'trends') return <TrendsPanel data={analysis?.trends} />
   if (activeTab === 'correlations') return <CorrelationsPanel data={analysis?.correlations} />
-  if (activeTab === 'executive_insights') return <InsightsPanel data={analysis?.executive_insights} />
+  if (activeTab === 'clustering') return <ClusteringPanel {...clusteringContext} />
+  if (activeTab === 'executive_insights') {
+    return (
+      <InsightsPanel
+        data={mergeExecutiveInsights(
+          analysis?.executive_insights,
+          clusteringContext.data?.executive_insights,
+        )}
+      />
+    )
+  }
   return <EmptyState message={analysis?.[activeTab]?.message || 'Dados indisponíveis para esta análise.'} />
 }
 
@@ -274,6 +577,16 @@ export default function AnaliseEstatisticaPage() {
   const [filtersLoading, setFiltersLoading] = useState(false)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [clusteringConfig, setClusteringConfig] = useState({
+    entity_type: 'campaign',
+    algorithm: 'kmeans',
+    clusters: 3,
+    normalize: true,
+  })
+  const [clustering, setClustering] = useState(null)
+  const [clusteringLoading, setClusteringLoading] = useState(false)
+  const [clusteringError, setClusteringError] = useState('')
+  const [clusteringRequested, setClusteringRequested] = useState(false)
   const initialAnalysisLoaded = useRef(false)
 
   const items = useMemo(() => ({
@@ -329,6 +642,34 @@ export default function AnaliseEstatisticaPage() {
     }
   }, [filters])
 
+  const loadClustering = useCallback(async () => {
+    setClusteringRequested(true)
+    setClusteringLoading(true)
+    setClusteringError('')
+    try {
+      const params = {
+        date_start: filters.date_start,
+        date_end: filters.date_end,
+        entity_type: clusteringConfig.entity_type,
+        algorithm: clusteringConfig.algorithm,
+        clusters: clusteringConfig.clusters,
+        normalize: clusteringConfig.normalize,
+      }
+      if (filters.ad_account_ids.length) params.ad_account_id = filters.ad_account_ids
+      if (filters.campaign_ids.length) params.campaign_id = filters.campaign_ids
+      if (filters.adset_ids.length) params.adset_id = filters.adset_ids
+      if (filters.ad_ids.length) params.ad_id = filters.ad_ids
+      const response = await api.get('/api/statistics/clustering', { params })
+      setClustering(response.data)
+    } catch (error) {
+      logUiError('analise-estatistica', 'statistics-clustering', error)
+      setClusteringError(error.response?.data?.detail || 'Falha ao atualizar a clusterização.')
+      setClustering(null)
+    } finally {
+      setClusteringLoading(false)
+    }
+  }, [clusteringConfig, filters])
+
   useEffect(() => {
     loadFilters()
   }, [loadFilters])
@@ -338,6 +679,11 @@ export default function AnaliseEstatisticaPage() {
     initialAnalysisLoaded.current = true
     loadAnalysis()
   }, [loadAnalysis])
+
+  useEffect(() => {
+    if (activeTab !== 'clustering' || clusteringRequested || clusteringLoading) return
+    loadClustering()
+  }, [activeTab, clusteringLoading, clusteringRequested, loadClustering])
 
   const updateFilter = (field, value) => {
     setFilters((current) => {
@@ -359,6 +705,13 @@ export default function AnaliseEstatisticaPage() {
   const handleSubmit = (event) => {
     event.preventDefault()
     loadAnalysis()
+    if (activeTab === 'clustering') loadClustering()
+  }
+
+  const updateClusteringConfig = (field, value) => {
+    setClusteringConfig((current) => ({ ...current, [field]: value }))
+    setClustering(null)
+    setClusteringError('')
   }
 
   return (
@@ -458,7 +811,16 @@ export default function AnaliseEstatisticaPage() {
       </div>
 
       <div className="statistics-panel" role="tabpanel">
-        {analysisLoading && !analysis ? <p className="hint-neutral">Calculando análise estatística...</p> : renderPanel(activeTab, analysis)}
+        {analysisLoading && !analysis && activeTab !== 'clustering'
+          ? <p className="hint-neutral">Calculando análise estatística...</p>
+          : renderPanel(activeTab, analysis, {
+            data: clustering,
+            config: clusteringConfig,
+            onConfigChange: updateClusteringConfig,
+            onRefresh: loadClustering,
+            loading: clusteringLoading,
+            errorMessage: clusteringError,
+          })}
       </div>
     </section>
   )
