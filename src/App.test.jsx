@@ -749,6 +749,108 @@ Obs.:
     expect(await screen.findByText('Cluster promissor encontrado')).toBeInTheDocument()
   })
 
+  it('renders correlation fallback without crashing when only legacy items are returned', async () => {
+    setRoute('/app/analise-estatistica')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 36, username: 'statistics-legacy-user' } } })
+      }
+      if (url === '/api/meta/filters') {
+        return Promise.resolve({
+          data: {
+            ad_accounts: [{ id_meta_ad_account: 'act_1', name: 'Conta Principal' }],
+            campaigns: [],
+            adsets: [],
+            ads: [],
+          },
+        })
+      }
+      if (url === '/api/statistics/analysis') {
+        return Promise.resolve({
+          data: {
+            meta: {
+              analysis_level: 'ad_account',
+              result_semantics: 'Resultados refletem o objetivo configurado na campanha.',
+            },
+            overview: {
+              available: true,
+              metrics: [
+                {
+                  metric: 'spend',
+                  label: 'Investimento',
+                  current_value: 150,
+                  previous_value: 170,
+                  percent_change: -11.76,
+                  direction: 'negative',
+                  interpretation: 'Investimento piorou 11,76% em relação ao período anterior.',
+                },
+              ],
+            },
+            stability: { available: false, message: 'Amostra insuficiente.', items: [] },
+            funnel: { available: false, message: 'Não há dados suficientes.', steps: [] },
+            segments: { available: false, message: 'Indisponível.', items: [] },
+            ab_tests: { available: false, message: 'Indisponível.', comparisons: [] },
+            saturation: { available: false, message: 'Indisponível.', items: [] },
+            cohorts: { available: false, message: 'Indisponível.', items: [] },
+            trends: { available: false, message: 'Indisponível.', metrics: [], anomalies: [] },
+            correlations: {
+              available: true,
+              message: '',
+              sample_size: 3,
+              items: [
+                {
+                  metric_x: 'spend',
+                  metric_x_label: 'Valor usado',
+                  metric_y: 'results',
+                  metric_y_label: 'Resultados',
+                  correlation: 0.71,
+                  strength: 'forte',
+                  direction: 'positiva',
+                },
+                {
+                  metric_x: 'results',
+                  metric_x_label: 'Resultados',
+                  metric_y: 'ctr',
+                  metric_y_label: 'CTR (cliques no link)',
+                  correlation: -0.22,
+                  strength: 'fraca',
+                  direction: 'negativa',
+                },
+              ],
+            },
+            executive_insights: { available: false, message: 'Sem insights.', items: [] },
+          },
+        })
+      }
+      if (url === '/api/statistics/clustering') {
+        return Promise.resolve({
+          data: {
+            available: false,
+            message: 'Clusterização não solicitada neste teste.',
+            summary: {},
+            clusters: [],
+            items: [],
+            pca: { available: false, message: 'PCA indisponível.', points: [] },
+            executive_insights: { available: false, items: [] },
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Análise Estatística' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Correlação' }))
+
+    expect(await screen.findByRole('table', { name: 'Matriz de correlação das métricas' })).toBeInTheDocument()
+    expect(screen.getByText('3 dias agregados no período selecionado.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Valor usado × Resultados: 0,71/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Resultados × CTR \(cliques no link\): -0,22/)).toBeInTheDocument()
+  })
+
   it('hides ad filter and renders specific tab data in meta dashboard', async () => {
     setRoute('/app/dashboard-meta')
 

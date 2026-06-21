@@ -220,15 +220,113 @@ function getCorrelationTone(value) {
   return 'neutral'
 }
 
+function getCorrelationStrength(value) {
+  if (value === null || value === undefined) return 'indisponível'
+  const absolute = Math.abs(value)
+  if (absolute < 0.2) return 'muito fraca'
+  if (absolute < 0.4) return 'fraca'
+  if (absolute < 0.6) return 'moderada'
+  if (absolute < 0.8) return 'forte'
+  return 'muito forte'
+}
+
+function getCorrelationDirection(value) {
+  if (value === null || value === undefined || value === 0) return 'neutra'
+  return value > 0 ? 'positiva' : 'negativa'
+}
+
+function buildCorrelationCell(value, strength, direction) {
+  return {
+    value: value ?? null,
+    strength: strength || getCorrelationStrength(value),
+    direction: direction || getCorrelationDirection(value),
+  }
+}
+
+function normalizeCorrelationData(data) {
+  if (!data) return data
+
+  const metrics = Array.isArray(data.metrics) ? data.metrics : []
+  const matrix = Array.isArray(data.matrix) ? data.matrix : []
+
+  if (metrics.length && matrix.length) {
+    return {
+      ...data,
+      metrics,
+      matrix,
+      unavailable_metrics: Array.isArray(data.unavailable_metrics) ? data.unavailable_metrics : [],
+    }
+  }
+
+  const items = Array.isArray(data.items) ? data.items : []
+  if (!items.length) {
+    return {
+      ...data,
+      metrics: [],
+      matrix: [],
+      unavailable_metrics: Array.isArray(data.unavailable_metrics) ? data.unavailable_metrics : [],
+    }
+  }
+
+  const metricMap = new Map()
+  const correlationMap = new Map()
+
+  items.forEach((item) => {
+    if (item.metric_x) {
+      metricMap.set(item.metric_x, {
+        metric: item.metric_x,
+        label: item.metric_x_label || item.metric_x,
+      })
+    }
+    if (item.metric_y) {
+      metricMap.set(item.metric_y, {
+        metric: item.metric_y,
+        label: item.metric_y_label || item.metric_y,
+      })
+    }
+
+    if (!item.metric_x || !item.metric_y) return
+    const cell = buildCorrelationCell(item.correlation, item.strength, item.direction)
+    correlationMap.set(`${item.metric_x}:${item.metric_y}`, cell)
+    correlationMap.set(`${item.metric_y}:${item.metric_x}`, cell)
+  })
+
+  const normalizedMetrics = Array.from(metricMap.values())
+  const normalizedMatrix = normalizedMetrics.map((rowMetric) => ({
+    metric: rowMetric.metric,
+    label: rowMetric.label,
+    cells: normalizedMetrics.map((columnMetric) => {
+      const cell = correlationMap.get(`${rowMetric.metric}:${columnMetric.metric}`)
+      return {
+        metric: columnMetric.metric,
+        ...buildCorrelationCell(cell?.value, cell?.strength, cell?.direction),
+      }
+    }),
+  }))
+
+  return {
+    ...data,
+    metrics: normalizedMetrics,
+    matrix: normalizedMatrix,
+    unavailable_metrics: Array.isArray(data.unavailable_metrics) ? data.unavailable_metrics : [],
+  }
+}
+
 function CorrelationsPanel({ data }) {
-  if (!data?.available) return <EmptyState message={data?.message} />
+  const normalizedData = normalizeCorrelationData(data)
+
+  if (!normalizedData?.available) return <EmptyState message={normalizedData?.message} />
+  if (!normalizedData.metrics.length || !normalizedData.matrix.length) {
+    return <EmptyState message={normalizedData.message || 'A matriz de correlação ainda não está disponível para esta amostra.'} />
+  }
+
   return (
     <section className="statistics-correlation-section">
       <header className="statistics-correlation-header">
         <div>
           <p className="statistics-eyebrow">Coeficiente de Pearson</p>
           <h3>Matriz de correlação</h3>
-          <p>{data.sample_size} dias agregados no período selecionado.</p>
+          <p>{normalizedData.sample_size} dias agregados no período selecionado.</p>
         </div>
         <div className="statistics-correlation-legend" aria-label="Legenda da correlação">
           <span className="is-negative">-1 negativa</span>
@@ -242,17 +340,17 @@ function CorrelationsPanel({ data }) {
           <thead>
             <tr>
               <th scope="col">Métrica</th>
-              {data.metrics.map((metric) => (
+              {normalizedData.metrics.map((metric) => (
                 <th scope="col" key={metric.metric} title={metric.label}>{metric.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {data.matrix.map((row) => (
+            {normalizedData.matrix.map((row) => (
               <tr key={row.metric}>
                 <th scope="row">{row.label}</th>
                 {row.cells.map((cell) => {
-                  const column = data.metrics.find((metric) => metric.metric === cell.metric)
+                  const column = normalizedData.metrics.find((metric) => metric.metric === cell.metric)
                   const formatted = cell.value === null || cell.value === undefined
                     ? '—'
                     : formatDecimal(cell.value, 2)
@@ -278,13 +376,13 @@ function CorrelationsPanel({ data }) {
 
       <div className="statistics-correlation-footer">
         <p><i className="fa-solid fa-circle-info" aria-hidden="true" /> Correlação não implica causalidade.</p>
-        {data.unavailable_metrics?.length ? (
+        {normalizedData.unavailable_metrics?.length ? (
           <details>
             <summary>
-              {data.unavailable_metrics.length} {data.unavailable_metrics.length === 1 ? 'métrica' : 'métricas'} fora da matriz
+              {normalizedData.unavailable_metrics.length} {normalizedData.unavailable_metrics.length === 1 ? 'métrica' : 'métricas'} fora da matriz
             </summary>
             <ul>
-              {data.unavailable_metrics.map((metric) => (
+              {normalizedData.unavailable_metrics.map((metric) => (
                 <li key={metric.metric}>
                   <strong>{metric.label}:</strong> {metric.reason}
                 </li>
