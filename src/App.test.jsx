@@ -562,7 +562,53 @@ Obs.:
             saturation: { available: false, message: 'Não há dados suficientes.', items: [] },
             cohorts: { available: false, message: 'Dados comerciais insuficientes para análise de coorte completa.', items: [] },
             trends: { available: false, message: 'Não há série diária.', metrics: [], anomalies: [] },
-            correlations: { available: false, message: 'Ainda não há dias suficientes.', items: [] },
+            correlations: {
+              available: true,
+              message: '',
+              sample_size: 4,
+              metrics: [
+                { metric: 'spend', label: 'Valor usado' },
+                { metric: 'results', label: 'Resultados' },
+                { metric: 'ctr', label: 'CTR (cliques no link)' },
+              ],
+              matrix: [
+                {
+                  metric: 'spend',
+                  label: 'Valor usado',
+                  cells: [
+                    { metric: 'spend', value: 1, strength: 'muito forte', direction: 'positiva' },
+                    { metric: 'results', value: 0.88, strength: 'muito forte', direction: 'positiva' },
+                    { metric: 'ctr', value: -0.42, strength: 'moderada', direction: 'negativa' },
+                  ],
+                },
+                {
+                  metric: 'results',
+                  label: 'Resultados',
+                  cells: [
+                    { metric: 'spend', value: 0.88, strength: 'muito forte', direction: 'positiva' },
+                    { metric: 'results', value: 1, strength: 'muito forte', direction: 'positiva' },
+                    { metric: 'ctr', value: null, strength: 'indisponível', direction: 'neutra' },
+                  ],
+                },
+                {
+                  metric: 'ctr',
+                  label: 'CTR (cliques no link)',
+                  cells: [
+                    { metric: 'spend', value: -0.42, strength: 'moderada', direction: 'negativa' },
+                    { metric: 'results', value: null, strength: 'indisponível', direction: 'neutra' },
+                    { metric: 'ctr', value: 1, strength: 'muito forte', direction: 'positiva' },
+                  ],
+                },
+              ],
+              unavailable_metrics: [
+                {
+                  metric: 'delivery',
+                  label: 'Veiculação',
+                  reason: 'É uma variável categórica.',
+                },
+              ],
+              items: [],
+            },
             executive_insights: {
               available: true,
               items: [
@@ -674,6 +720,12 @@ Obs.:
 
     fireEvent.click(screen.getByRole('tab', { name: 'Segmentações' }))
     expect(await screen.findByText(/Breakdowns de idade, gênero/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Correlação' }))
+    expect(await screen.findByRole('table', { name: 'Matriz de correlação das métricas' })).toBeInTheDocument()
+    expect(screen.getByText('4 dias agregados no período selecionado.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Valor usado × Resultados: 0,88/)).toBeInTheDocument()
+    expect(screen.getByText('1 métrica fora da matriz')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Clusterização' }))
     expect(await screen.findByRole('heading', { name: 'Clusterização' })).toBeInTheDocument()

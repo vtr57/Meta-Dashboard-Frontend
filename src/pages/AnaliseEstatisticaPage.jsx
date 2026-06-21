@@ -211,20 +211,89 @@ function TrendsPanel({ data }) {
   )
 }
 
+function getCorrelationTone(value) {
+  if (value === null || value === undefined) return 'unavailable'
+  const absolute = Math.abs(value)
+  const intensity = absolute >= 0.6 ? 'strong' : absolute >= 0.3 ? 'moderate' : 'weak'
+  if (value > 0) return `positive-${intensity}`
+  if (value < 0) return `negative-${intensity}`
+  return 'neutral'
+}
+
 function CorrelationsPanel({ data }) {
   if (!data?.available) return <EmptyState message={data?.message} />
   return (
-    <div className="statistics-list-grid">
-      {data.items.map((item) => (
-        <article className="statistics-detail-card" key={`${item.metric_x}-${item.metric_y}`}>
-          <p className="statistics-eyebrow">{item.direction} · {item.strength}</p>
-          <h3>{item.metric_x_label} × {item.metric_y_label}</h3>
-          <p className="statistics-correlation-value">{formatDecimal(item.correlation, 2)}</p>
-          <p>{item.interpretation}</p>
-          <small>{item.causality_warning}</small>
-        </article>
-      ))}
-    </div>
+    <section className="statistics-correlation-section">
+      <header className="statistics-correlation-header">
+        <div>
+          <p className="statistics-eyebrow">Coeficiente de Pearson</p>
+          <h3>Matriz de correlação</h3>
+          <p>{data.sample_size} dias agregados no período selecionado.</p>
+        </div>
+        <div className="statistics-correlation-legend" aria-label="Legenda da correlação">
+          <span className="is-negative">-1 negativa</span>
+          <span className="is-neutral">0 neutra</span>
+          <span className="is-positive">+1 positiva</span>
+        </div>
+      </header>
+
+      <div className="statistics-correlation-table-wrap">
+        <table className="statistics-correlation-table" aria-label="Matriz de correlação das métricas">
+          <thead>
+            <tr>
+              <th scope="col">Métrica</th>
+              {data.metrics.map((metric) => (
+                <th scope="col" key={metric.metric} title={metric.label}>{metric.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.matrix.map((row) => (
+              <tr key={row.metric}>
+                <th scope="row">{row.label}</th>
+                {row.cells.map((cell) => {
+                  const column = data.metrics.find((metric) => metric.metric === cell.metric)
+                  const formatted = cell.value === null || cell.value === undefined
+                    ? '—'
+                    : formatDecimal(cell.value, 2)
+                  const description = cell.value === null || cell.value === undefined
+                    ? `${row.label} × ${column?.label}: correlação indisponível`
+                    : `${row.label} × ${column?.label}: ${formatted}, correlação ${cell.strength} ${cell.direction}`
+                  return (
+                    <td
+                      className={`statistics-correlation-cell is-${getCorrelationTone(cell.value)}`}
+                      key={cell.metric}
+                      title={description}
+                      aria-label={description}
+                    >
+                      {formatted}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="statistics-correlation-footer">
+        <p><i className="fa-solid fa-circle-info" aria-hidden="true" /> Correlação não implica causalidade.</p>
+        {data.unavailable_metrics?.length ? (
+          <details>
+            <summary>
+              {data.unavailable_metrics.length} {data.unavailable_metrics.length === 1 ? 'métrica' : 'métricas'} fora da matriz
+            </summary>
+            <ul>
+              {data.unavailable_metrics.map((metric) => (
+                <li key={metric.metric}>
+                  <strong>{metric.label}:</strong> {metric.reason}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </div>
+    </section>
   )
 }
 
