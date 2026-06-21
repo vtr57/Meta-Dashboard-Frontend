@@ -13,13 +13,14 @@ const TABS = [
   ['ab_tests', 'Testes A/B'],
   ['saturation', 'Saturação'],
   ['cohorts', 'Coortes'],
+  ['time_series', 'Análise Temporal'],
   ['trends', 'Tendência e Anomalias'],
   ['correlations', 'Correlação'],
   ['clustering', 'Clusterização'],
   ['executive_insights', 'Insights Executivos'],
 ]
 
-const CURRENCY_METRICS = new Set(['spend', 'cpc', 'cpm', 'cost_per_result'])
+const CURRENCY_METRICS = new Set(['spend', 'cpc', 'cpm', 'cost_per_result', 'cpl'])
 const PERCENT_METRICS = new Set(['ctr', 'click_to_result', 'conversion_rate'])
 const CLUSTER_COLORS = ['#0b4ea2', '#2f8b58', '#d18a16', '#8a4fb5', '#c94b4b']
 
@@ -34,6 +35,14 @@ function formatMetricValue(metric, value) {
   if (value === null || value === undefined) return 'N/A'
   if (CURRENCY_METRICS.has(metric)) return formatCurrency(value)
   if (PERCENT_METRICS.has(metric)) return `${formatDecimal(value, 2)}%`
+  if (metric === 'frequency') return formatDecimal(value, 2)
+  return formatNumber(value)
+}
+
+function formatTimeSeriesValue(metric, value) {
+  if (value === null || value === undefined) return 'N/A'
+  if (CURRENCY_METRICS.has(metric)) return formatCurrency(value)
+  if (PERCENT_METRICS.has(metric)) return `${formatDecimal(Number(value) * 100, 2)}%`
   if (metric === 'frequency') return formatDecimal(value, 2)
   return formatNumber(value)
 }
@@ -694,6 +703,361 @@ function ClusteringPanel({
   )
 }
 
+function TimeSeriesChart({ data }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    chartRef.current?.destroy()
+    chartRef.current = null
+    if (!data?.daily_series?.length || !canvasRef.current) return undefined
+
+    const observedLabels = data.daily_series.map((point) => point.date)
+    const forecastPoints = data.forecast?.points || []
+    const forecastLabels = forecastPoints.map((point) => point.date)
+    const labels = [...observedLabels, ...forecastLabels]
+    const observedValues = data.daily_series.map((point) => point[data.metric])
+    const movingAverage = data.moving_averages?.['7']?.points?.map((point) => point.moving_average) || []
+    const forecastValues = [
+      ...new Array(Math.max(observedValues.length - 1, 0)).fill(null),
+      observedValues.at(-1) ?? null,
+      ...forecastPoints.map((point) => point.predicted_value),
+    ]
+    const anomalyMap = new Map(
+      (data.anomalies || [])
+        .filter((item) => item.metric === data.metric)
+        .map((item) => [item.date, item.value]),
+    )
+    const context = canvasRef.current.getContext('2d')
+    if (!context) return undefined
+    chartRef.current = new Chart(context, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: data.meta?.metric_label || data.metric,
+            data: [...observedValues, ...new Array(forecastLabels.length).fill(null)],
+            borderColor: '#0b4ea2',
+            backgroundColor: 'rgba(11, 78, 162, 0.10)',
+            borderWidth: 2,
+            pointRadius: 2.5,
+            tension: 0.28,
+          },
+          {
+            label: 'Média móvel 7 dias',
+            data: [...movingAverage, ...new Array(forecastLabels.length).fill(null)],
+            borderColor: '#2f8b58',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.28,
+          },
+          {
+            label: 'Previsão',
+            data: forecastValues,
+            borderColor: '#d18a16',
+            borderDash: [6, 5],
+            borderWidth: 2,
+            pointRadius: 2.5,
+            tension: 0.15,
+          },
+          {
+            label: 'Anomalias',
+            data: labels.map((label) => anomalyMap.get(label) ?? null),
+            showLine: false,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#c94b4b',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { usePointStyle: true, boxWidth: 8 },
+          },
+          tooltip: {
+            callbacks: {
+              label: (contextValue) => (
+                `${contextValue.dataset.label}: ${formatTimeSeriesValue(data.metric, contextValue.raw)}`
+              ),
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxTicksLimit: 10 },
+          },
+          y: {
+            beginAtZero: false,
+            grid: { color: 'rgba(88, 118, 155, 0.12)' },
+          },
+        },
+      },
+    })
+
+    return () => {
+      chartRef.current?.destroy()
+      chartRef.current = null
+    }
+  }, [data])
+
+  if (!data?.daily_series?.length) {
+    return <EmptyState message="Não há dados diários suficientes para análise temporal." />
+  }
+  return (
+    <div className="statistics-time-chart" aria-label="Série temporal, média móvel, previsão e anomalias">
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
+function TimeSeriesPanel({
+  data,
+  config,
+  onConfigChange,
+  onRefresh,
+  loading,
+  errorMessage,
+}) {
+  if (loading && !data) return <p className="hint-neutral">Calculando tendências e projeções...</p>
+
+  const summary = data?.summary || {}
+  const trend = data?.trend || {}
+  const goal = data?.goal_projection || {}
+  const forecastDays = data?.forecast?.forecast_days || config.forecast_days
+
+  return (
+    <div className="statistics-stack">
+      <section className="statistics-time-header">
+        <div>
+          <p className="statistics-eyebrow">Série diária e planejamento</p>
+          <h3>Análise Temporal e Previsão</h3>
+          <p>Entenda tendências, sazonalidade, previsões e anomalias com base nos dados diários de mídia.</p>
+        </div>
+        <div className="statistics-time-controls">
+          <label>
+            <span>Métrica principal</span>
+            <select value={config.metric} onChange={(event) => onConfigChange('metric', event.target.value)}>
+              <option value="spend">Investimento</option>
+              <option value="leads">Leads (Resultados)</option>
+              <option value="cpl">CPL (Custo por resultado)</option>
+              <option value="ctr">CTR</option>
+              <option value="cpc">CPC</option>
+              <option value="cpm">CPM</option>
+              <option value="frequency">Frequência</option>
+              <option value="conversions">Conversões (Resultados)</option>
+              <option value="conversion_rate">Taxa de conversão</option>
+            </select>
+          </label>
+          <label>
+            <span>Previsão</span>
+            <select
+              value={config.forecast_days}
+              onChange={(event) => onConfigChange('forecast_days', Number(event.target.value))}
+            >
+              <option value={7}>7 dias</option>
+              <option value={14}>14 dias</option>
+              <option value={30}>30 dias</option>
+            </select>
+          </label>
+          <label>
+            <span>Meta de leads</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={config.goal_leads}
+              onChange={(event) => onConfigChange('goal_leads', event.target.value)}
+              placeholder="Opcional"
+            />
+          </label>
+          <button className="primary-btn" type="button" onClick={onRefresh} disabled={loading}>
+            {loading ? 'Calculando...' : 'Atualizar previsão'}
+          </button>
+        </div>
+      </section>
+
+      {errorMessage ? <p className="hint-error">{errorMessage}</p> : null}
+      {data?.meta?.result_semantics ? <p className="statistics-inline-notice">{data.meta.result_semantics}</p> : null}
+      {data?.warnings?.length ? (
+        <div className="statistics-time-warnings" role="status">
+          {data.warnings.map((warning) => (
+            <p key={warning}><i className="fa-solid fa-circle-info" aria-hidden="true" />{warning}</p>
+          ))}
+        </div>
+      ) : null}
+
+      {!data?.daily_series?.length ? (
+        <EmptyState message="Não há dados diários suficientes para análise temporal." />
+      ) : (
+        <>
+          <div className="statistics-time-summary">
+            <article className="statistics-summary-card">
+              <p>Tendência</p>
+              <strong>{trend.available ? trend.interpretation : 'Amostra insuficiente'}</strong>
+              <small>{trend.strength ? `Força ${trend.strength}` : 'São necessários 3 dias válidos.'}</small>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Média do período</p>
+              <strong>{formatTimeSeriesValue(data.metric, summary.average)}</strong>
+              <small>{summary.valid_metric_points || 0} pontos válidos</small>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Média móvel 7 dias</p>
+              <strong>{formatTimeSeriesValue(data.metric, summary.moving_average_7d)}</strong>
+              <small>Janela completa mais recente</small>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Melhor dia observado</p>
+              <strong>{summary.best_weekday || 'Amostra insuficiente'}</strong>
+              <small>Comparação pelas médias disponíveis</small>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Anomalias</p>
+              <strong>{formatNumber(summary.anomalies_count || 0)}</strong>
+              <small>Z-score absoluto a partir de 2,5</small>
+            </article>
+            <article className="statistics-summary-card">
+              <p>Previsão · {forecastDays} dias</p>
+              <strong>{formatTimeSeriesValue(data.metric, summary.forecast_total)}</strong>
+              <small>{data.forecast?.confidence ? `Confiança ${data.forecast.confidence}` : 'Indisponível'}</small>
+            </article>
+          </div>
+
+          <section className="statistics-time-section">
+            <div className="statistics-section-heading">
+              <div>
+                <h3>Evolução e previsão</h3>
+                <p>Linha diária, média móvel de 7 dias e projeção simples da métrica selecionada.</p>
+              </div>
+            </div>
+            <TimeSeriesChart data={data} />
+          </section>
+
+          {goal.available ? (
+            <section className="statistics-time-section">
+              <div className="statistics-section-heading">
+                <div>
+                  <h3>Investimento para a meta</h3>
+                  <p>{goal.interpretation}</p>
+                </div>
+                <span className="statistics-status-badge">Confiança {goal.confidence}</span>
+              </div>
+              <div className="statistics-time-scenarios">
+                <article><span>Otimista</span><strong>{formatCurrency(goal.scenarios.optimistic)}</strong></article>
+                <article><span>Base</span><strong>{formatCurrency(goal.scenarios.base)}</strong></article>
+                <article><span>Conservador</span><strong>{formatCurrency(goal.scenarios.conservative)}</strong></article>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="statistics-time-section">
+            <div className="statistics-section-heading">
+              <div>
+                <h3>Sazonalidade semanal</h3>
+                <p>{data.seasonality?.interpretation}</p>
+              </div>
+            </div>
+            <div className="statistics-table-wrap">
+              <table className="statistics-table statistics-seasonality-table">
+                <thead>
+                  <tr>
+                    <th>Dia</th>
+                    <th>Dias analisados</th>
+                    <th>Investimento médio</th>
+                    <th>Leads médios</th>
+                    <th>CPL médio</th>
+                    <th>CTR médio</th>
+                    <th>CPC médio</th>
+                    <th>Conversões médias</th>
+                    <th>Amostra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.seasonality?.items?.map((item) => (
+                    <tr key={item.weekday_number}>
+                      <td>{item.weekday}</td>
+                      <td>{item.days_count}</td>
+                      <td>{formatTimeSeriesValue('spend', item.avg_spend)}</td>
+                      <td>{formatTimeSeriesValue('leads', item.avg_leads)}</td>
+                      <td>{formatTimeSeriesValue('cpl', item.avg_cpl)}</td>
+                      <td>{formatTimeSeriesValue('ctr', item.avg_ctr)}</td>
+                      <td>{formatTimeSeriesValue('cpc', item.avg_cpc)}</td>
+                      <td>{formatTimeSeriesValue('conversions', item.avg_conversions)}</td>
+                      <td>
+                        <span className={`statistics-status-badge ${item.sample_warning ? '' : 'is-success'}`}>
+                          {item.sample_warning ? 'Baixa' : 'Adequada'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="statistics-time-section">
+            <div className="statistics-section-heading">
+              <div>
+                <h3>Anomalias</h3>
+                <p>Pontos fora do padrão estatístico do período, sem inferência automática de causa.</p>
+              </div>
+            </div>
+            {data.anomalies?.length ? (
+              <div className="statistics-table-wrap">
+                <table className="statistics-table statistics-anomalies-table">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Métrica</th>
+                      <th>Valor</th>
+                      <th>Média</th>
+                      <th>Z-score</th>
+                      <th>Severidade</th>
+                      <th>Interpretação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.anomalies.map((item) => (
+                      <tr key={`${item.date}-${item.metric}`}>
+                        <td>{item.date}</td>
+                        <td>{item.metric_label}</td>
+                        <td>{formatTimeSeriesValue(item.metric, item.value)}</td>
+                        <td>{formatTimeSeriesValue(item.metric, item.mean)}</td>
+                        <td>{formatDecimal(item.z_score, 2)}</td>
+                        <td><span className="statistics-status-badge">{item.severity === 'high' ? 'Forte' : 'Moderada'}</span></td>
+                        <td>{item.interpretation}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <EmptyState message="Nenhuma anomalia foi detectada com a amostra atual." />}
+          </section>
+
+          <section className="statistics-time-section">
+            <div className="statistics-section-heading">
+              <div>
+                <h3>Insights temporais</h3>
+                <p>Leituras automáticas para orientar investigação e planejamento.</p>
+              </div>
+            </div>
+            <InsightsPanel data={{ available: Boolean(data.insights?.length), items: data.insights, message: 'Sem insights para a amostra atual.' }} />
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
 function mergeExecutiveInsights(analysisInsights, clusteringInsights) {
   const baseItems = analysisInsights?.items || []
   const clusterItems = clusteringInsights?.available ? clusteringInsights.items || [] : []
@@ -705,7 +1069,7 @@ function mergeExecutiveInsights(analysisInsights, clusteringInsights) {
   }
 }
 
-function renderPanel(activeTab, analysis, clusteringContext) {
+function renderPanel(activeTab, analysis, clusteringContext, timeSeriesContext) {
   if (activeTab === 'overview') return <OverviewPanel data={analysis?.overview} />
   if (activeTab === 'stability') return <StabilityPanel data={analysis?.stability} />
   if (activeTab === 'funnel') return <FunnelPanel data={analysis?.funnel} />
@@ -713,6 +1077,7 @@ function renderPanel(activeTab, analysis, clusteringContext) {
   if (activeTab === 'saturation') return <SaturationPanel data={analysis?.saturation} />
   if (activeTab === 'trends') return <TrendsPanel data={analysis?.trends} />
   if (activeTab === 'correlations') return <CorrelationsPanel data={analysis?.correlations} />
+  if (activeTab === 'time_series') return <TimeSeriesPanel {...timeSeriesContext} />
   if (activeTab === 'clustering') return <ClusteringPanel {...clusteringContext} />
   if (activeTab === 'executive_insights') {
     return (
@@ -754,6 +1119,15 @@ export default function AnaliseEstatisticaPage() {
   const [clusteringLoading, setClusteringLoading] = useState(false)
   const [clusteringError, setClusteringError] = useState('')
   const [clusteringRequested, setClusteringRequested] = useState(false)
+  const [timeSeriesConfig, setTimeSeriesConfig] = useState({
+    metric: 'cpl',
+    forecast_days: 7,
+    goal_leads: '',
+  })
+  const [timeSeries, setTimeSeries] = useState(null)
+  const [timeSeriesLoading, setTimeSeriesLoading] = useState(false)
+  const [timeSeriesError, setTimeSeriesError] = useState('')
+  const [timeSeriesRequested, setTimeSeriesRequested] = useState(false)
   const initialAnalysisLoaded = useRef(false)
 
   const items = useMemo(() => ({
@@ -837,6 +1211,33 @@ export default function AnaliseEstatisticaPage() {
     }
   }, [clusteringConfig, filters])
 
+  const loadTimeSeries = useCallback(async () => {
+    setTimeSeriesRequested(true)
+    setTimeSeriesLoading(true)
+    setTimeSeriesError('')
+    try {
+      const params = {
+        date_start: filters.date_start,
+        date_end: filters.date_end,
+        metric: timeSeriesConfig.metric,
+        forecast_days: timeSeriesConfig.forecast_days,
+      }
+      if (timeSeriesConfig.goal_leads) params.goal_leads = timeSeriesConfig.goal_leads
+      if (filters.ad_account_ids.length) params.ad_account_id = filters.ad_account_ids
+      if (filters.campaign_ids.length) params.campaign_id = filters.campaign_ids
+      if (filters.adset_ids.length) params.adset_id = filters.adset_ids
+      if (filters.ad_ids.length) params.ad_id = filters.ad_ids
+      const response = await api.get('/api/statistics/time-series', { params })
+      setTimeSeries(response.data)
+    } catch (error) {
+      logUiError('analise-estatistica', 'statistics-time-series', error)
+      setTimeSeriesError(error.response?.data?.detail || 'Falha ao atualizar a análise temporal.')
+      setTimeSeries(null)
+    } finally {
+      setTimeSeriesLoading(false)
+    }
+  }, [filters, timeSeriesConfig])
+
   useEffect(() => {
     loadFilters()
   }, [loadFilters])
@@ -851,6 +1252,11 @@ export default function AnaliseEstatisticaPage() {
     if (activeTab !== 'clustering' || clusteringRequested || clusteringLoading) return
     loadClustering()
   }, [activeTab, clusteringLoading, clusteringRequested, loadClustering])
+
+  useEffect(() => {
+    if (activeTab !== 'time_series' || timeSeriesRequested || timeSeriesLoading) return
+    loadTimeSeries()
+  }, [activeTab, loadTimeSeries, timeSeriesLoading, timeSeriesRequested])
 
   const updateFilter = (field, value) => {
     setFilters((current) => {
@@ -873,12 +1279,20 @@ export default function AnaliseEstatisticaPage() {
     event.preventDefault()
     loadAnalysis()
     if (activeTab === 'clustering') loadClustering()
+    if (activeTab === 'time_series') loadTimeSeries()
   }
 
   const updateClusteringConfig = (field, value) => {
     setClusteringConfig((current) => ({ ...current, [field]: value }))
     setClustering(null)
     setClusteringError('')
+  }
+
+  const updateTimeSeriesConfig = (field, value) => {
+    setTimeSeriesConfig((current) => ({ ...current, [field]: value }))
+    setTimeSeries(null)
+    setTimeSeriesError('')
+    setTimeSeriesRequested(false)
   }
 
   return (
@@ -987,6 +1401,13 @@ export default function AnaliseEstatisticaPage() {
             onRefresh: loadClustering,
             loading: clusteringLoading,
             errorMessage: clusteringError,
+          }, {
+            data: timeSeries,
+            config: timeSeriesConfig,
+            onConfigChange: updateTimeSeriesConfig,
+            onRefresh: loadTimeSeries,
+            loading: timeSeriesLoading,
+            errorMessage: timeSeriesError,
           })}
       </div>
     </section>

@@ -702,6 +702,100 @@ Obs.:
           },
         })
       }
+      if (url === '/api/statistics/time-series') {
+        return Promise.resolve({
+          data: {
+            period: {
+              date_start: '2026-01-01',
+              date_end: '2026-01-14',
+              days: 14,
+              days_with_data: 14,
+            },
+            metric: 'cpl',
+            meta: {
+              metric_label: 'CPL (Custo por resultado)',
+              result_semantics: 'Leads e conversões usam Resultados como proxy do objetivo configurado.',
+            },
+            summary: {
+              valid_metric_points: 14,
+              average: 12.5,
+              moving_average_7d: 11.8,
+              best_weekday: 'terça-feira',
+              anomalies_count: 1,
+              forecast_total: 84,
+            },
+            daily_series: [
+              { date: '2026-01-01', spend: 120, leads: 8, conversions: 8, cpl: 15, ctr: 0.03 },
+              { date: '2026-01-02', spend: 110, leads: 10, conversions: 10, cpl: 11, ctr: 0.04 },
+            ],
+            moving_averages: {
+              7: {
+                points: [
+                  { date: '2026-01-01', value: 15, moving_average: null },
+                  { date: '2026-01-02', value: 11, moving_average: null },
+                ],
+              },
+            },
+            trend: {
+              available: true,
+              strength: 'moderada',
+              business_direction: 'positive',
+              interpretation: 'CPL apresenta tendência de queda no período selecionado.',
+            },
+            seasonality: {
+              interpretation: 'Comparação baseada nas médias observadas por dia da semana.',
+              items: [
+                {
+                  weekday: 'segunda-feira',
+                  weekday_number: 1,
+                  avg_spend: 100,
+                  avg_leads: 8,
+                  avg_cpl: 12.5,
+                  avg_ctr: 0.03,
+                  avg_cpc: 1.2,
+                  avg_conversions: 8,
+                  days_count: 2,
+                  sample_warning: false,
+                },
+              ],
+            },
+            forecast: {
+              available: true,
+              forecast_days: 7,
+              confidence: 'medium',
+              points: [
+                { date: '2026-01-15', predicted_value: 12, lower_bound: 9, upper_bound: 15 },
+              ],
+            },
+            goal_projection: {
+              available: false,
+              message: 'Informe uma meta para estimar o investimento.',
+            },
+            anomalies: [
+              {
+                date: '2026-01-02',
+                metric: 'cpl',
+                metric_label: 'CPL',
+                value: 24,
+                mean: 12.5,
+                z_score: 2.8,
+                severity: 'moderate',
+                interpretation: 'CPL ficou muito acima do padrão.',
+              },
+            ],
+            insights: [
+              {
+                type: 'success',
+                title: 'Tendência de CPL',
+                description: 'O CPL apresenta tendência de queda.',
+                evidence: ['Inclinação negativa'],
+                suggested_action: 'Monitorar a continuidade.',
+              },
+            ],
+            warnings: ['A sazonalidade fica mais confiável com períodos acima de 21 dias.'],
+          },
+        })
+      }
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
 
@@ -716,7 +810,7 @@ Obs.:
     expect(screen.getByRole('button', { name: 'Atualizar análise' })).toBeInTheDocument()
     expect(await screen.findByText('Investimento')).toBeInTheDocument()
     expect(screen.getByText(/150,00/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab')).toHaveLength(11)
+    expect(screen.getAllByRole('tab')).toHaveLength(12)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Segmentações' }))
     expect(await screen.findByText(/Breakdowns de idade, gênero/)).toBeInTheDocument()
@@ -741,6 +835,21 @@ Obs.:
           algorithm: 'kmeans',
           clusters: 3,
           normalize: true,
+        }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Análise Temporal' }))
+    expect(await screen.findByRole('heading', { name: 'Análise Temporal e Previsão' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Métrica principal')).toHaveValue('cpl')
+    expect(screen.getByText('Sazonalidade semanal')).toBeInTheDocument()
+    expect(screen.getByText('CPL ficou muito acima do padrão.')).toBeInTheDocument()
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/statistics/time-series',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          metric: 'cpl',
+          forecast_days: 7,
         }),
       }),
     )

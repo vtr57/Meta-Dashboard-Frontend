@@ -2173,6 +2173,157 @@
   min-width: 1320px;
 }
 
+.statistics-time-header {
+  border: 1px solid #c9d9f0;
+  border-radius: 14px;
+  background: #f8fbff;
+  padding: 0.9rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(520px, auto);
+  align-items: end;
+  gap: 1rem;
+}
+
+.statistics-time-header h3,
+.statistics-time-section h3 {
+  margin: 0.15rem 0 0;
+  color: #173a65;
+}
+
+.statistics-time-header p:last-child,
+.statistics-time-section .statistics-section-heading p {
+  margin: 0.35rem 0 0;
+  color: #557294;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.statistics-time-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.25fr) minmax(110px, 0.8fr) minmax(120px, 0.8fr) auto;
+  align-items: end;
+  gap: 0.55rem;
+}
+
+.statistics-time-controls label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.statistics-time-controls label > span {
+  color: #31577f;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.statistics-time-controls select,
+.statistics-time-controls input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #9cb8e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #173a65;
+  padding: 0.55rem 0.62rem;
+}
+
+.statistics-time-controls select:focus-visible,
+.statistics-time-controls input:focus-visible {
+  outline: 2px solid #3d75c4;
+  outline-offset: 1px;
+}
+
+.statistics-time-warnings {
+  border: 1px solid #ead39e;
+  border-radius: 12px;
+  background: #fff9ea;
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.statistics-time-warnings p {
+  margin: 0;
+  color: #76520d;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.statistics-time-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.statistics-time-summary .statistics-summary-card {
+  min-height: 116px;
+  align-content: start;
+}
+
+.statistics-time-summary .statistics-summary-card strong {
+  font-size: 1.02rem;
+  line-height: 1.35;
+}
+
+.statistics-time-section {
+  border: 1px solid #c9d9f0;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.statistics-time-chart {
+  position: relative;
+  width: 100%;
+  height: clamp(340px, 48vw, 520px);
+  min-height: 340px;
+  border: 1px solid #d6e3f6;
+  border-radius: 12px;
+  background: #fbfdff;
+  padding: 0.55rem;
+  box-sizing: border-box;
+}
+
+.statistics-time-scenarios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.statistics-time-scenarios article {
+  border-radius: 10px;
+  background: #f2f6fc;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.statistics-time-scenarios span {
+  color: #58769b;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.statistics-time-scenarios strong {
+  color: #173a65;
+  font-size: 1.05rem;
+}
+
+.statistics-seasonality-table {
+  min-width: 1120px;
+}
+
+.statistics-anomalies-table {
+  min-width: 980px;
+}
+
 .statistics-cluster-id {
   display: inline-flex;
   align-items: center;
@@ -3545,6 +3696,23 @@
     align-items: stretch;
   }
 
+  .statistics-time-header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .statistics-time-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statistics-time-controls .primary-btn {
+    min-height: 42px;
+  }
+
+  .statistics-time-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .statistics-cluster-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3683,8 +3851,20 @@
   .statistics-cluster-controls,
   .statistics-cluster-summary,
   .statistics-cluster-grid,
-  .statistics-cluster-metrics {
+  .statistics-cluster-metrics,
+  .statistics-time-controls,
+  .statistics-time-summary,
+  .statistics-time-scenarios {
     grid-template-columns: 1fr;
+  }
+
+  .statistics-time-controls .primary-btn {
+    width: 100%;
+  }
+
+  .statistics-time-chart {
+    height: 340px;
+    min-height: 340px;
   }
 
   .statistics-normalize-control {
