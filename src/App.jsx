@@ -17,7 +17,30 @@ import { logUiError } from './pages/pageUtils'
 import api, { setCsrfToken } from './lib/api'
 import './App.css'
 
-function LoginPage({ onLogin }) {
+function getSessionBootstrapErrorMessage(error) {
+  if (error?.response?.status && error.response.status < 500) {
+    return ''
+  }
+
+  const detail = String(error?.message || error?.response?.data?.detail || '').toLowerCase()
+  const looksLikeNetworkIssue =
+    !error?.response ||
+    error.response?.status >= 500 ||
+    detail.includes('network') ||
+    detail.includes('timeout') ||
+    detail.includes('timed out') ||
+    detail.includes('failed to fetch') ||
+    detail.includes('connection refused') ||
+    detail.includes('connection reset')
+
+  if (!looksLikeNetworkIssue) {
+    return ''
+  }
+
+  return 'Não foi possível acessar o backend agora. Verifique VITE_API_BASE_URL, DNS e Nginx na VPS.'
+}
+
+function LoginPage({ onLogin, sessionError }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -46,6 +69,12 @@ function LoginPage({ onLogin }) {
           {' | '}
           <a href="/exclusao-de-dados">Exclusao de Dados</a>
         </p>
+
+        {sessionError ? (
+          <p className="session-warning" role="status" aria-live="polite">
+            {sessionError}
+          </p>
+        ) : null}
 
         <label htmlFor="username">Usuário</label>
         <input
@@ -82,18 +111,22 @@ function LoginPage({ onLogin }) {
 function App() {
   const [loadingSession, setLoadingSession] = useState(true)
   const [user, setUser] = useState(null)
+  const [sessionError, setSessionError] = useState('')
 
   const loadSession = useCallback(async () => {
     try {
       const response = await api.get('/auth/me/')
       setCsrfToken(response.data?.csrfToken)
+      setSessionError('')
       if (response.data?.authenticated) {
         setUser(response.data.user)
       } else {
         setUser(null)
       }
-    } catch {
-      logUiError('app-root', 'session', 'Falha ao validar sessao')
+    } catch (error) {
+      const message = getSessionBootstrapErrorMessage(error)
+      logUiError('app-root', 'session', error)
+      setSessionError(message)
       setUser(null)
     } finally {
       setLoadingSession(false)
@@ -109,6 +142,7 @@ function App() {
       const csrfResponse = await api.get('/auth/me/')
       setCsrfToken(csrfResponse.data?.csrfToken)
       await api.post('/auth/login/', credentials)
+      setSessionError('')
       await loadSession()
       return { ok: true }
     } catch (error) {
@@ -142,7 +176,11 @@ function App() {
         <Route
           path="/login"
           element={
-            user ? <Navigate to="/app/conexao" replace /> : <LoginPage onLogin={onLogin} />
+            user ? (
+              <Navigate to="/app/conexao" replace />
+            ) : (
+              <LoginPage onLogin={onLogin} sessionError={sessionError} />
+            )
           }
         />
         <Route

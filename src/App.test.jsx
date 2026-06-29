@@ -134,6 +134,16 @@ describe('App frontend flows', () => {
     })
   })
 
+  it('shows backend unavailable guidance when session bootstrap times out', async () => {
+    api.get.mockRejectedValueOnce(new Error('Network Error'))
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent('Não foi possível acessar o backend agora.')
+    expect(screen.getByText(/VITE_API_BASE_URL, DNS e Nginx na VPS/)).toBeInTheDocument()
+  })
+
   it('shows sync logs in connection/sync page', async () => {
     setRoute('/app/conexao')
 

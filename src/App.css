@@ -53,6 +53,17 @@
   text-decoration: underline;
 }
 
+.session-warning {
+  margin: 0.25rem 0 0.1rem;
+  padding: 0.8rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #f3b8a8;
+  background: #fff5f2;
+  color: #8f1d14;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .login-card label {
   font-size: 0.9rem;
   color: #082f6e;
