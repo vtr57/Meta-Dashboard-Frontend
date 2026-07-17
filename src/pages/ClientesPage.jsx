@@ -78,6 +78,49 @@ function formatCurrency(value) {
   }).format(toNumeric(value))
 }
 
+function formatCsvValue(value) {
+  const normalized = String(value ?? '').replace(/\r?\n|\r/g, ' ').trim()
+  const escaped = normalized.replace(/"/g, '""')
+  return `"${escaped}"`
+}
+
+function buildClientesCsv(rows) {
+  const headers = [
+    'Name (Cliente)',
+    'Nome (AdAccount)',
+    'ID Meta',
+    'Data renovacao creditos',
+    'Nicho de atuacao',
+    'Valor investido',
+    'Forma de pagamento',
+    'Periodo de cobranca',
+    'Saldo atual',
+    'Status financeiro',
+    'Gasto diario',
+  ]
+  const lines = [
+    headers.map(formatCsvValue).join(';'),
+    ...rows.map((row) =>
+      [
+        row.name || '-',
+        row.nome || '-',
+        row.id_meta_ad_account || '-',
+        formatDate(row.data_renovacao_creditos),
+        row.nicho_atuacao || '-',
+        formatDecimal(row.valor_investido),
+        row.forma_pagamento || '-',
+        row.periodo_cobranca || '-',
+        formatDecimal(row.saldo_atual),
+        getFinancialStatus(row).label,
+        formatDecimal(row.gasto_diario),
+      ]
+        .map(formatCsvValue)
+        .join(';'),
+    ),
+  ]
+  return `\uFEFF${lines.join('\n')}`
+}
+
 function getSaldoCoverageDays(row) {
   const saldo = toNumeric(row?.saldo_atual)
   const gasto = toNumeric(row?.gasto_diario)
@@ -958,6 +1001,36 @@ export function ClientesVisualizarPage() {
     setFeedback(`Exibindo todos os clientes (${formatNumber(clientes.length)}).`)
   }
 
+  const handleExportarTabela = () => {
+    if (filteredClientes.length === 0) {
+      setErrorMsg('Nao ha clientes visiveis para exportar.')
+      setFeedback('')
+      return
+    }
+
+    setErrorMsg('')
+    try {
+      const csv = buildClientesCsv(filteredClientes)
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const fileLabel = showOnlySelected ? 'clientes-selecionados' : 'clientes-visualizacao'
+
+      link.href = url
+      link.download = `${fileLabel}-${toInputDate(new Date())}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      setFeedback(`${formatNumber(filteredClientes.length)} cliente(s) exportado(s) com sucesso.`)
+    } catch (error) {
+      logUiError('clientes-visualizar', 'clientes-export-csv', error)
+      setErrorMsg('Falha ao exportar a tabela atual de clientes.')
+      setFeedback('')
+    }
+  }
+
   const startEdit = (row) => {
     setEditingId(row.id)
     setEditingForm({
@@ -1222,6 +1295,14 @@ export function ClientesVisualizarPage() {
           {showOnlySelected ? <span className="clientes-chip">Filtro ativo: selecionados</span> : null}
         </div>
         <div className="clientes-actions-group clientes-actions-danger">
+          <button
+            type="button"
+            className="table-action-btn"
+            onClick={handleExportarTabela}
+            disabled={isBusy || filteredClientes.length === 0}
+          >
+            Exportar tabela
+          </button>
           <button
             type="button"
             className="table-action-btn table-action-btn-secondary"
