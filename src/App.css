@@ -3641,6 +3641,97 @@
   flex-wrap: wrap;
 }
 
+.clientes-num-vendas-view {
+  display: grid;
+  gap: 1rem;
+}
+
+.clientes-num-vendas-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.clientes-num-vendas-controls {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.clientes-num-vendas-month-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 180px;
+  color: #163864;
+  font-weight: 700;
+}
+
+.clientes-num-vendas-month-field span {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5c7ca0;
+}
+
+.clientes-num-vendas-month-field input {
+  border: 1px solid #cbd9ef;
+  border-radius: 12px;
+  background: #fbfdff;
+  color: #102a4d;
+  padding: 0.78rem 0.9rem;
+}
+
+.clientes-num-vendas-month-field input:focus {
+  outline: 2px solid rgba(11, 78, 162, 0.18);
+  outline-offset: 1px;
+}
+
+.clientes-num-vendas-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.clientes-num-vendas-card-highlight {
+  border-color: #b8d6b8;
+  background: linear-gradient(180deg, #f5fbf5 0%, #ebf8eb 100%);
+}
+
+.clientes-num-vendas-table-shell {
+  border: 1px solid #d7e3f5;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f5f9ff 100%);
+  padding: 0.9rem;
+  box-shadow: 0 14px 32px rgba(8, 47, 110, 0.06);
+}
+
+.clientes-num-vendas-table td {
+  vertical-align: middle;
+}
+
+.clientes-num-vendas-client-cell,
+.clientes-num-vendas-account-cell {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.clientes-num-vendas-client-cell strong {
+  color: #102a4d;
+}
+
+.clientes-num-vendas-client-cell small,
+.clientes-num-vendas-account-cell small {
+  color: #5a7b9f;
+  font-size: 0.78rem;
+}
+
+.clientes-num-vendas-input {
+  min-width: 110px;
+}
+
 @media (max-width: 1024px) {
   .app-sidebar {
     position: static;
@@ -3786,6 +3877,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .clientes-num-vendas-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clientes-num-vendas-controls {
+    width: 100%;
+  }
+
   .clientes-kanban-grid,
   .clientes-estado-summary {
     grid-template-columns: 1fr;
@@ -3909,23 +4008,28 @@
   }
 
   .clientes-summary-grid,
-  .clientes-filter-grid {
+  .clientes-filter-grid,
+  .clientes-num-vendas-summary {
     grid-template-columns: 1fr;
   }
 
   .clientes-actions-group,
-  .clientes-context-actions {
+  .clientes-context-actions,
+  .clientes-num-vendas-controls {
     width: 100%;
   }
 
   .clientes-estado-header,
+  .clientes-num-vendas-header,
   .clientes-kanban-card-top,
   .clientes-kanban-card-footer {
     grid-template-columns: 1fr;
     display: grid;
   }
 
-  .clientes-estado-header .primary-btn {
+  .clientes-estado-header .primary-btn,
+  .clientes-num-vendas-controls .primary-btn,
+  .clientes-num-vendas-month-field {
     width: 100%;
   }
 }

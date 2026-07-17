@@ -40,6 +40,15 @@ function toLocalDate(value) {
   return parsed
 }
 
+function padMonth(value) {
+  return String(value).padStart(2, '0')
+}
+
+function getCurrentMonthInput() {
+  const now = new Date()
+  return `${now.getFullYear()}-${padMonth(now.getMonth() + 1)}`
+}
+
 function formatSaldoSyncFeedback(saldoSync) {
   if (!saldoSync || typeof saldoSync !== 'object') return ''
 
@@ -825,6 +834,239 @@ export function ClientesEstadoPage() {
             </section>
           )
         })}
+      </div>
+    </section>
+  )
+}
+
+export function ClientesNumVendasPage() {
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput)
+  const [clientes, setClientes] = useState([])
+  const [drafts, setDrafts] = useState({})
+  const [summary, setSummary] = useState({
+    total_clientes: 0,
+    total_vendas: 0,
+    clientes_sem_preenchimento: 0,
+    clientes_preenchidos: 0,
+  })
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const loadClientesNumVendas = useCallback(async (monthValue) => {
+    const resolvedMonth = String(monthValue || '').trim() || getCurrentMonthInput()
+    setLoading(true)
+    setErrorMsg('')
+    try {
+      const response = await api.get('/api/empresa/clientes/num-vendas', {
+        params: { month: resolvedMonth },
+      })
+      const nextClientes = response.data?.clientes || []
+      setClientes(nextClientes)
+      setSummary(
+        response.data?.summary || {
+          total_clientes: nextClientes.length,
+          total_vendas: 0,
+          clientes_sem_preenchimento: nextClientes.length,
+          clientes_preenchidos: 0,
+        },
+      )
+      setDrafts(
+        Object.fromEntries(
+          nextClientes.map((cliente) => [cliente.id, String(cliente.quantidade_vendas_mes ?? 0)]),
+        ),
+      )
+    } catch (error) {
+      logUiError('clientes-num-vendas', 'empresa-clientes-num-vendas-get', error)
+      setClientes([])
+      setDrafts({})
+      setSummary({
+        total_clientes: 0,
+        total_vendas: 0,
+        clientes_sem_preenchimento: 0,
+        clientes_preenchidos: 0,
+      })
+      setErrorMsg(error.response?.data?.detail || 'Falha ao carregar vendas mensais dos clientes.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadClientesNumVendas(selectedMonth)
+  }, [loadClientesNumVendas, selectedMonth])
+
+  const totalDigitado = useMemo(
+    () =>
+      clientes.reduce((acc, cliente) => {
+        const raw = drafts[cliente.id]
+        const parsed = Number(raw)
+        return acc + (Number.isFinite(parsed) && parsed >= 0 ? parsed : 0)
+      }, 0),
+    [clientes, drafts],
+  )
+
+  const clientesSemDigitacao = useMemo(
+    () =>
+      clientes.reduce((acc, cliente) => {
+        const raw = String(drafts[cliente.id] ?? '').trim()
+        return acc + (raw === '' ? 1 : 0)
+      }, 0),
+    [clientes, drafts],
+  )
+
+  const handleDraftChange = (clienteId, value) => {
+    if (value === '') {
+      setDrafts((prev) => ({ ...prev, [clienteId]: '' }))
+      return
+    }
+
+    if (!/^\d+$/.test(value)) return
+    setDrafts((prev) => ({ ...prev, [clienteId]: value }))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setErrorMsg('')
+    setFeedback('')
+
+    const entries = clientes.map((cliente) => ({
+      cliente_id: cliente.id,
+      quantidade_vendas: drafts[cliente.id] === '' ? 0 : Number(drafts[cliente.id] || 0),
+    }))
+
+    try {
+      const response = await api.put('/api/empresa/clientes/num-vendas', {
+        month: selectedMonth,
+        entries,
+      })
+      const nextClientes = response.data?.clientes || []
+      setClientes(nextClientes)
+      setSummary(response.data?.summary || summary)
+      setDrafts(
+        Object.fromEntries(
+          nextClientes.map((cliente) => [cliente.id, String(cliente.quantidade_vendas_mes ?? 0)]),
+        ),
+      )
+      setFeedback(response.data?.detail || 'Vendas do mes atualizadas com sucesso.')
+    } catch (error) {
+      logUiError('clientes-num-vendas', 'empresa-clientes-num-vendas-put', error)
+      setErrorMsg(error.response?.data?.detail || 'Falha ao salvar vendas mensais.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="view-card clientes-view clientes-num-vendas-view">
+      <p className="clientes-breadcrumb">Clientes &gt; Num. vendas</p>
+      <div className="clientes-num-vendas-header">
+        <div>
+          <h2>Clientes / Num. vendas</h2>
+          <p className="view-description">
+            Registre o total de vendas de carros por cliente no mes selecionado.
+          </p>
+        </div>
+        <div className="clientes-num-vendas-controls">
+          <label className="clientes-num-vendas-month-field" htmlFor="clientes-num-vendas-month">
+            <span>Mes de referencia</span>
+            <input
+              id="clientes-num-vendas-month"
+              type="month"
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+              disabled={loading || saving}
+            />
+          </label>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={handleSave}
+            disabled={loading || saving || clientes.length === 0}
+          >
+            <i className="fa-solid fa-floppy-disk" aria-hidden="true" />{' '}
+            {saving ? 'Salvando...' : 'Salvar vendas do mes'}
+          </button>
+        </div>
+      </div>
+
+      <div className="clientes-num-vendas-summary">
+        <article className="clientes-summary-card">
+          <p className="clientes-summary-label">Clientes no mes</p>
+          <p className="clientes-summary-value">{formatNumber(summary.total_clientes)}</p>
+        </article>
+        <article className="clientes-summary-card clientes-num-vendas-card-highlight">
+          <p className="clientes-summary-label">Vendas registradas</p>
+          <p className="clientes-summary-value">{formatNumber(totalDigitado)}</p>
+        </article>
+        <article className="clientes-summary-card">
+          <p className="clientes-summary-label">Sem preenchimento</p>
+          <p className="clientes-summary-value">{formatNumber(clientesSemDigitacao)}</p>
+        </article>
+      </div>
+
+      {feedback ? <p className="hint-ok">{feedback}</p> : null}
+      {errorMsg ? <p className="hint-error">{errorMsg}</p> : null}
+      {loading ? <p className="hint-neutral">Carregando vendas mensais...</p> : null}
+
+      <div className="clientes-num-vendas-table-shell">
+        <div className="clientes-table-wrapper">
+          <table className="clientes-table clientes-num-vendas-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>AdAccount</th>
+                <th>Estado</th>
+                <th>Nicho</th>
+                <th className="clientes-col-money">Vendas no mes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!loading && clientes.length === 0 ? (
+                <tr>
+                  <td colSpan="5">Nenhum cliente disponivel para registrar vendas neste mes.</td>
+                </tr>
+              ) : (
+                clientes.map((cliente) => (
+                  <tr key={cliente.id}>
+                    <td>
+                      <div className="clientes-num-vendas-client-cell">
+                        <strong>{cliente.name || '-'}</strong>
+                        <small>ID {cliente.id}</small>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="clientes-num-vendas-account-cell">
+                        <span>{cliente.nome || '-'}</span>
+                        <small>{cliente.id_meta_ad_account || '-'}</small>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`clientes-financial-badge ${cliente.estado === 'MAU' ? 'danger' : cliente.estado === 'BOM' ? 'ok' : 'warning'}`}>
+                        {cliente.estado || 'REGULAR'}
+                      </span>
+                    </td>
+                    <td>{cliente.nicho_atuacao || '-'}</td>
+                    <td className="clientes-cell-money">
+                      <input
+                        className="clientes-cell-input clientes-num-vendas-input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputMode="numeric"
+                        value={drafts[cliente.id] ?? ''}
+                        onChange={(event) => handleDraftChange(cliente.id, event.target.value)}
+                        disabled={loading || saving}
+                        aria-label={`Numero de vendas de ${cliente.name}`}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   )

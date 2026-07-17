@@ -118,6 +118,15 @@ function AppSidebar({ user, onLogout }) {
                   <span>Estado</span>
                 </span>
               </NavLink>
+              <NavLink
+                to="/app/clientes/num-vendas"
+                className={({ isActive }) => (isActive ? 'sidebar-sublink active' : 'sidebar-sublink')}
+              >
+                <span className="sidebar-link-content">
+                  <i className="fa-solid fa-car-side sidebar-link-icon" aria-hidden="true" />
+                  <span>Num. vendas</span>
+                </span>
+              </NavLink>
             </div>
           ) : null}
         </div>

@@ -7,6 +7,7 @@ vi.mock('./lib/api', () => ({
     post: vi.fn(),
     delete: vi.fn(),
     patch: vi.fn(),
+    put: vi.fn(),
   },
   setCsrfToken: vi.fn(),
 }))
@@ -84,6 +85,86 @@ describe('App frontend flows', () => {
       expect(screen.getByText('Cliente Estavel')).toBeInTheDocument()
       expect(screen.getByText('Cliente Saudavel')).toBeInTheDocument()
     })
+  })
+
+  it('loads and saves clientes num vendas page by month', async () => {
+    setRoute('/app/clientes/num-vendas')
+
+    api.get.mockImplementation((url) => {
+      if (url === '/auth/me/') {
+        return Promise.resolve({ data: { authenticated: true, user: { id: 41, username: 'vendas-user' } } })
+      }
+      if (url === '/api/empresa/clientes/num-vendas') {
+        return Promise.resolve({
+          data: {
+            month: '2026-07',
+            clientes: [
+              {
+                id: 11,
+                name: 'Cliente Vendas',
+                nome: 'Conta Vendas',
+                id_meta_ad_account: 'act_vendas_1',
+                nicho_atuacao: 'SUV',
+                estado: 'BOM',
+                quantidade_vendas_mes: 3,
+                has_vendas_registradas: true,
+              },
+            ],
+            summary: {
+              total_clientes: 1,
+              total_vendas: 3,
+              clientes_sem_preenchimento: 0,
+              clientes_preenchidos: 1,
+            },
+          },
+        })
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+
+    api.put.mockResolvedValue({
+      data: {
+        detail: 'Vendas do mes atualizadas com sucesso.',
+        clientes: [
+          {
+            id: 11,
+            name: 'Cliente Vendas',
+            nome: 'Conta Vendas',
+            id_meta_ad_account: 'act_vendas_1',
+            nicho_atuacao: 'SUV',
+            estado: 'BOM',
+            quantidade_vendas_mes: 5,
+            has_vendas_registradas: true,
+          },
+        ],
+        summary: {
+          total_clientes: 1,
+          total_vendas: 5,
+          clientes_sem_preenchimento: 0,
+          clientes_preenchidos: 1,
+        },
+      },
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Clientes / Num. vendas' })).toBeInTheDocument()
+    const input = await screen.findByLabelText('Numero de vendas de Cliente Vendas')
+    expect(input).toHaveValue(3)
+
+    fireEvent.change(input, { target: { value: '5' } })
+    fireEvent.click(screen.getByRole('button', { name: /Salvar vendas do mes/i }))
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/api/empresa/clientes/num-vendas', {
+        params: { month: '2026-07' },
+      })
+      expect(api.put).toHaveBeenCalledWith('/api/empresa/clientes/num-vendas', {
+        month: '2026-07',
+        entries: [{ cliente_id: 11, quantidade_vendas: 5 }],
+      })
+    })
+    expect(await screen.findByText('Vendas do mes atualizadas com sucesso.')).toBeInTheDocument()
   })
 
   it('executes login flow with session/cookie auth endpoints', async () => {

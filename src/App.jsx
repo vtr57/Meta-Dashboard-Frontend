@@ -4,6 +4,7 @@ import ConnectionPage from './pages/ConnectionPage'
 import {
   ClientesCadastrarPage,
   ClientesEstadoPage,
+  ClientesNumVendasPage,
   ClientesVisualizarPage,
 } from './pages/ClientesPage'
 import InstagramDashboardPage from './pages/InstagramDashboardPage'
@@ -202,6 +203,7 @@ function App() {
           <Route path="clientes" element={<Navigate to="/app/clientes/cadastrar" replace />} />
           <Route path="clientes/cadastrar" element={<ClientesCadastrarPage />} />
           <Route path="clientes/estado" element={<ClientesEstadoPage />} />
+          <Route path="clientes/num-vendas" element={<ClientesNumVendasPage />} />
           <Route path="clientes/visualizar" element={<ClientesVisualizarPage />} />
         </Route>
         <Route path="*" element={<Navigate to={user ? '/app/conexao' : '/login'} replace />} />
